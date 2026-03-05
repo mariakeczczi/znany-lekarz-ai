@@ -55,8 +55,12 @@ function buildFileNameMap(): Map<string, string> {
   return map;
 }
 
-function formatToolCall(name: string, input: unknown, fileNameMap: Map<string, string>): string {
+// Returns null for internal tools that should be hidden from the user
+function formatToolCall(name: string, input: unknown, fileNameMap: Map<string, string>): string | null {
   const i = (input ?? {}) as Record<string, unknown>;
+
+  // Hide internal Agent SDK tools
+  if (name === "ToolSearch") return null;
 
   if (name === "Read") {
     const p = (i.file_path as string) ?? "";
@@ -76,7 +80,10 @@ function formatToolCall(name: string, input: unknown, fileNameMap: Map<string, s
   if (name === "Glob" || name === "Grep") {
     return `Scanning files...`;
   }
-  return `Using: ${name}`;
+  if (name === "Bash") {
+    return null; // hide shell commands
+  }
+  return null; // hide any other unknown internal tools
 }
 
 export async function POST(req: NextRequest) {
@@ -123,7 +130,8 @@ export async function POST(req: NextRequest) {
               if (block.type === "text" && block.text) {
                 emit({ type: "text", content: block.text });
               } else if (block.type === "tool_use") {
-                emit({ type: "tool_call", label: formatToolCall(block.name ?? "", block.input, fileNameMap) });
+                const label = formatToolCall(block.name ?? "", block.input, fileNameMap);
+                if (label !== null) emit({ type: "tool_call", label });
               }
             }
           } else if (message.type === "user" && "message" in message) {
