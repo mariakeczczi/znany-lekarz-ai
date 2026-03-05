@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -221,7 +222,7 @@ export function HealthData() {
     <div className="flex h-full overflow-hidden">
       {/* Left: Chat */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <ScrollArea ref={chatScrollRef} className="flex-1 px-4 py-4">
+        <ScrollArea ref={chatScrollRef} className="flex-1 min-h-0 px-4 py-4">
           <div className="max-w-2xl mx-auto space-y-3">
             {messages.map((msg) => (
               <ChatBubble key={msg.id} message={msg} />
@@ -451,6 +452,35 @@ function FileTypeIcon({ mimeType }: { mimeType: string }) {
   return <FileIcon className="w-8 h-8 text-muted-foreground/50" />;
 }
 
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        h1: ({ children }) => <p className="font-bold text-base mt-2 mb-1">{children}</p>,
+        h2: ({ children }) => <p className="font-semibold mt-2 mb-1">{children}</p>,
+        h3: ({ children }) => <p className="font-semibold mt-1 mb-0.5">{children}</p>,
+        p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        em: ({ children }) => <em className="italic">{children}</em>,
+        ul: ({ children }) => <ul className="pl-4 mb-1 space-y-0.5 list-disc">{children}</ul>,
+        ol: ({ children }) => <ol className="pl-4 mb-1 space-y-0.5 list-decimal">{children}</ol>,
+        li: ({ children }) => <li>{children}</li>,
+        hr: () => <hr className="my-2 border-current opacity-20" />,
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-2">
+            <table className="text-xs border-collapse w-full">{children}</table>
+          </div>
+        ),
+        th: ({ children }) => <th className="border border-current/20 px-2 py-1 font-semibold text-left">{children}</th>,
+        td: ({ children }) => <td className="border border-current/20 px-2 py-1">{children}</td>,
+        code: ({ children }) => <code className="bg-current/10 rounded px-1 font-mono text-xs">{children}</code>,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
 function AgentStep({ step }: { step: StatusStep }) {
   const isSearch = step.label.startsWith("Searching:");
   return (
@@ -501,7 +531,7 @@ function ChatBubble({ message }: { message: Message }) {
         >
           {message.content ? (
             <>
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              <MarkdownContent content={message.content} />
               {message.isStreaming && (
                 <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse align-middle" />
               )}

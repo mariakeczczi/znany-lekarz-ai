@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { getFiles } from "@/lib/health-storage";
 
 // nova-search-mcp runs at http://localhost:3003/mcp
 // Start it with: pnpm nx serve nova-search-mcp
 const MCP_URL = process.env.DOCTOR_SEARCH_MCP_URL ?? "http://localhost:3003/mcp";
 const TENANT_ID = process.env.DOCTOR_SEARCH_TENANT_ID ?? "PL";
 
-const SYSTEM_PROMPT = `Jesteś pomocnym asystentem wyszukiwania lekarzy na platformie ZnanyLekarz / Doctoralia.
+const BASE_SYSTEM_PROMPT = `Jesteś pomocnym asystentem wyszukiwania lekarzy na platformie ZnanyLekarz / Doctoralia.
 Pomagasz użytkownikom znaleźć odpowiedniego specjalistę medycznego.
 
 Masz dostęp do narzędzia search_doctor. Używaj go aktywnie.
@@ -33,6 +34,22 @@ Ważne zasady:
 5. Odpowiadaj po polsku, bądź empatyczny
 
 Nie musisz podawać countryCode — jest już ustawiony w nagłówku x-tenant-id.`;
+
+function buildSystemPrompt(): string {
+  const files = getFiles().filter((f) => f.status === "ready" && f.description);
+  if (files.length === 0) return BASE_SYSTEM_PROMPT;
+
+  const fileContext = files
+    .map((f) => `- **${f.aiName}**: ${f.description}`)
+    .join("\n");
+
+  return `${BASE_SYSTEM_PROMPT}
+
+## Dokumenty medyczne użytkownika
+Użytkownik wgrał następujące dokumenty medyczne. Jeśli szukana specjalizacja jest powiązana z treścią tych dokumentów, uwzględnij to w odpowiedzi — wspomnij powiązanie i użyj odpowiednich parametrów (np. diseaseNames, contentQuery).
+
+${fileContext}`;
+}
 
 function formatToolCall(name: string, input: unknown): string {
   if (name === "search_doctor" && input && typeof input === "object") {
@@ -82,7 +99,7 @@ export async function POST(req: NextRequest) {
           prompt,
           options: {
             model: "claude-sonnet-4-6",
-            systemPrompt: SYSTEM_PROMPT,
+            systemPrompt: buildSystemPrompt(),
             env: buildSubprocessEnv(),
             permissionMode: "bypassPermissions",
             allowDangerouslySkipPermissions: true,
