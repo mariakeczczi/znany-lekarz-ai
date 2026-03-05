@@ -153,21 +153,12 @@ export async function POST(req: NextRequest) {
     ? `${conversationHistory}\nUżytkownik: ${lastMessage.content}`
     : lastMessage.content;
 
-  const healthFiles = getFiles().filter((f) => f.status === "ready" && f.description);
-
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       try {
         const emit = (payload: object) =>
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
-
-        // Emit a single synthetic step when health files are pre-loaded into system prompt
-        if (healthFiles.length > 0) {
-          const topic = lastMessage.content as string;
-          emit({ type: "tool_call", label: `Checking your health records for context related to: ${topic.slice(0, 60)}` });
-          emit({ type: "tool_result" });
-        }
 
         for await (const message of query({
           prompt,
