@@ -13,6 +13,7 @@ import {
   HeartPulse,
   ImageIcon,
   FileIcon,
+  Trash2,
 } from "lucide-react";
 
 interface FileRecord {
@@ -24,6 +25,7 @@ interface FileRecord {
   uploadedAt: string;
   size: number;
   status: "analyzing" | "ready" | "error";
+  thumbnailFile: string | null;
 }
 
 interface Message {
@@ -40,7 +42,7 @@ export function HealthData() {
       id: "welcome",
       role: "assistant",
       content:
-        "Hi! Upload your medical documents above — lab results, prescriptions, doctor notes — and I'll analyze them. Then you can ask questions like \"What are my biggest health concerns?\" or \"How has my cholesterol changed?\"",
+        'Hi! Upload your medical documents above — lab results, prescriptions, doctor notes — and I\'ll analyze them. Then you can ask questions like "What are my biggest health concerns?" or "How has my cholesterol changed?"',
     },
   ]);
   const [input, setInput] = useState("");
@@ -57,7 +59,7 @@ export function HealthData() {
   useEffect(() => {
     const hasAnalyzing = files.some((f) => f.status === "analyzing");
     if (!hasAnalyzing) return;
-    const interval = setInterval(loadFiles, 2500);
+    const interval = setInterval(loadFiles, 2000);
     return () => clearInterval(interval);
   }, [files]);
 
@@ -79,7 +81,6 @@ export function HealthData() {
   }
 
   async function uploadFile(file: File) {
-    // Optimistic placeholder
     const placeholder: FileRecord = {
       id: `pending-${Date.now()}`,
       originalName: file.name,
@@ -89,6 +90,7 @@ export function HealthData() {
       uploadedAt: new Date().toISOString(),
       size: file.size,
       status: "analyzing",
+      thumbnailFile: null,
     };
     setFiles((prev) => [placeholder, ...prev]);
 
@@ -97,7 +99,6 @@ export function HealthData() {
       formData.append("file", file);
       const res = await fetch("/api/health/upload", { method: "POST", body: formData });
       if (!res.ok) throw new Error("Upload failed");
-      // Remove placeholder and reload real data
       setFiles((prev) => prev.filter((f) => f.id !== placeholder.id));
       loadFiles();
     } catch {
@@ -118,24 +119,26 @@ export function HealthData() {
     Array.from(e.dataTransfer.files).forEach(uploadFile);
   }
 
+  async function resetAll() {
+    await fetch("/api/health/reset", { method: "POST" });
+    setFiles([]);
+    setMessages([
+      {
+        id: "welcome-reset",
+        role: "assistant",
+        content: "All files cleared. Upload new documents to get started.",
+      },
+    ]);
+  }
+
   async function sendMessage(text: string) {
     if (!text.trim() || isLoading) return;
-
     const readyFiles = files.filter((f) => f.status === "ready");
     if (readyFiles.length === 0) return;
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: text.trim(),
-    };
+    const userMsg: Message = { id: Date.now().toString(), role: "user", content: text.trim() };
     const assistantId = (Date.now() + 1).toString();
-    const assistantMsg: Message = {
-      id: assistantId,
-      role: "assistant",
-      content: "",
-      isStreaming: true,
-    };
+    const assistantMsg: Message = { id: assistantId, role: "assistant", content: "", isStreaming: true };
 
     const updatedMessages = [...messages, userMsg];
     setMessages([...updatedMessages, assistantMsg]);
@@ -166,9 +169,7 @@ export function HealthData() {
             const event = JSON.parse(line.slice(6));
             if (event.type === "text") {
               setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId ? { ...m, content: m.content + event.content } : m
-                )
+                prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + event.content } : m))
               );
             } else if (event.type === "done") {
               setMessages((prev) =>
@@ -183,9 +184,7 @@ export function HealthData() {
     } catch {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: "Sorry, something went wrong.", isStreaming: false }
-            : m
+          m.id === assistantId ? { ...m, content: "Sorry, something went wrong.", isStreaming: false } : m
         )
       );
     } finally {
@@ -206,10 +205,7 @@ export function HealthData() {
               : "border-border hover:border-primary/50 hover:bg-muted/20"
           }`}
           onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
         >
@@ -227,10 +223,23 @@ export function HealthData() {
         </div>
       </div>
 
-      {/* File cards */}
+      {/* File grid */}
       {files.length > 0 && (
         <div className="px-4 pb-3 shrink-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-muted-foreground">
+              {files.length} file{files.length !== 1 ? "s" : ""}
+              {files.some((f) => f.status === "analyzing") && " · analyzing..."}
+            </span>
+            <button
+              onClick={resetAll}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <Trash2 className="w-3 h-3" />
+              Clear all
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
             {files.map((file) => (
               <FileCard key={file.id} file={file} />
             ))}
@@ -252,10 +261,7 @@ export function HealthData() {
       {/* Chat input */}
       <div className="border-t bg-card px-4 py-3 shrink-0">
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendMessage(input);
-          }}
+          onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
           className="max-w-2xl mx-auto flex gap-2"
         >
           <Input
@@ -269,11 +275,7 @@ export function HealthData() {
             disabled={isLoading || readyFiles.length === 0}
             className="flex-1"
           />
-          <Button
-            type="submit"
-            disabled={isLoading || !input.trim() || readyFiles.length === 0}
-            size="icon"
-          >
+          <Button type="submit" disabled={isLoading || !input.trim() || readyFiles.length === 0} size="icon">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </form>
@@ -284,55 +286,65 @@ export function HealthData() {
 
 function FileCard({ file }: { file: FileRecord }) {
   const [expanded, setExpanded] = useState(false);
+  const hasThumbnail = !!file.thumbnailFile;
 
   return (
-    <div className="border rounded-xl p-3 bg-card text-sm space-y-1.5">
-      <div className="flex items-start gap-2">
-        <FileTypeIcon mimeType={file.mimeType} />
-        <div className="min-w-0 flex-1">
-          {file.status === "analyzing" ? (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-              <span className="text-xs">Analyzing...</span>
-            </div>
-          ) : (
-            <p className="font-medium leading-tight line-clamp-2 text-xs">{file.aiName}</p>
-          )}
-          <p className="text-xs text-muted-foreground truncate">{file.originalName}</p>
-        </div>
+    <div className="border rounded-xl bg-card text-sm overflow-hidden flex flex-col">
+      {/* Thumbnail area */}
+      <div className="h-28 bg-muted relative overflow-hidden shrink-0">
+        {hasThumbnail ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/health/thumbnail/${file.id}`}
+            alt={file.aiName}
+            className="w-full h-full object-cover object-top"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <FileTypeIcon mimeType={file.mimeType} large />
+          </div>
+        )}
+        {file.status === "analyzing" && (
+          <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
       </div>
 
-      {file.status === "ready" && file.description && (
-        <div>
-          <p className={`text-xs text-muted-foreground leading-relaxed ${!expanded ? "line-clamp-2" : ""}`}>
-            {file.description}
-          </p>
-          {file.description.length > 120 && (
-            <button onClick={() => setExpanded(!expanded)} className="text-xs text-primary mt-0.5">
-              {expanded ? "Less" : "More"}
-            </button>
-          )}
-        </div>
-      )}
+      {/* Info */}
+      <div className="p-2.5 space-y-1 flex-1">
+        <p className="font-medium text-xs leading-tight line-clamp-2">
+          {file.status === "analyzing" ? file.originalName : file.aiName}
+        </p>
+        <p className="text-xs text-muted-foreground truncate">{file.originalName}</p>
 
-      {file.status === "error" && (
-        <p className="text-xs text-destructive">Analysis failed</p>
-      )}
+        {file.status === "ready" && file.description && (
+          <div>
+            <p className={`text-xs text-muted-foreground leading-relaxed ${!expanded ? "line-clamp-2" : ""}`}>
+              {file.description}
+            </p>
+            {file.description.length > 100 && (
+              <button onClick={() => setExpanded(!expanded)} className="text-xs text-primary mt-0.5">
+                {expanded ? "Less" : "More"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {file.status === "error" && (
+          <p className="text-xs text-destructive">Analysis failed</p>
+        )}
+      </div>
     </div>
   );
 }
 
-function FileTypeIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType === "application/pdf") {
-    return <FileText className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />;
-  }
-  if (mimeType.startsWith("image/")) {
-    return <ImageIcon className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />;
-  }
-  if (mimeType.includes("word")) {
-    return <FileText className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />;
-  }
-  return <FileIcon className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />;
+function FileTypeIcon({ mimeType, large }: { mimeType: string; large?: boolean }) {
+  const size = large ? "w-8 h-8" : "w-4 h-4";
+  if (mimeType === "application/pdf") return <FileText className={`${size} text-red-400`} />;
+  if (mimeType.startsWith("image/")) return <ImageIcon className={`${size} text-blue-400`} />;
+  if (mimeType.includes("word")) return <FileText className={`${size} text-indigo-400`} />;
+  return <FileIcon className={`${size} text-muted-foreground`} />;
 }
 
 function ChatBubble({ message }: { message: Message }) {

@@ -1,0 +1,145 @@
+[
+  {
+    "id": "e1d902b2-a3a0-4314-95c2-83fdccaf22d3",
+    "originalName": "Oftalmologia.pdf",
+    "aiName": "Ophthalmology Report - Gralewski Marius - March 2025",
+    "description": "Overall clinical judgment: ophthalmological examination within normal limits in both eyes.\n\nVisual Acuity (uncorrected): Right eye (OD) 0.70 / Left eye (OI) 0.6- — corrective lenses not brought to appointment, so corrected acuity not assessed.\n\nUpdated Refraction: OD: 90-0.75-0.25 (1.0++) / OI: -0.75 (1.0++) — both eyes achieve full corrected vision (1.0++).\n\nColor Vision (Ishihara Test): Normal, no alterations.\n\nAnterior Pole & Adnexa: No alterations in either eye.\n\nExtrinsic & Intrinsic Ocular Motility: Normal in both eyes; pupillary reflexes (direct and consensual) present bilaterally.\n\nIntraocular Pressure: OD 13 mmHg / OI 12 mmHg — both within normal range (<21 mmHg).\n\nFundus Examination (undilated): Optic discs and maculae normal; posterior pole without alterations in both eyes.\n\nNo follow-up recommendations specified.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.346Z",
+    "size": 159268,
+    "status": "ready",
+    "fileName": "75fbb1f5-dfc5-46df-9f48-ceeca88dff60.pdf"
+  },
+  {
+    "id": "2ebf1929-e141-4de8-a517-208703712d76",
+    "originalName": "Rx Torax.pdf",
+    "aiName": "Chest X-Ray PA and Lateral 2025-03-12 Normal",
+    "description": "Chest X-ray (PA and lateral views) performed at Hospital Sanitas Cima — all findings within normal limits:\n- Lung parenchyma: no acute consolidations or infiltrates\n- Costophrenic angles: clear (no pleural effusion)\n- Lung apices: well ventilated\n- Cardiac silhouette: normal size and shape\n\nOverall: completely normal chest X-ray. No acute pathology detected.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.339Z",
+    "size": 16649,
+    "status": "ready",
+    "fileName": "4ec6aa7f-025d-4887-bcf0-2f762437c2ae.pdf"
+  },
+  {
+    "id": "aa60ca40-945e-4b13-81fe-03d3d23ae4b8",
+    "originalName": "Informe urologia.pdf",
+    "aiName": "Urology Follow-Up Report 2025-03-12 Hospital Sanitas Cima",
+    "description": "Annual urology check-up visit (age 41) — no results available yet, pending tests ordered.\nNo lower urinary tract symptoms; satisfactory voiding pattern.\nHistory of prostatitis — currently asymptomatic.\nFamily history: maternal uncle with prostate adenocarcinoma (ADC) — relevant risk factor to monitor.\nPending results: Total and Free PSA blood test (PSA T and L) — not yet available.\nPending results: Renal-vesical-prostatic ultrasound (ecografía reno-vesico-prostática) — not yet available.\nPlan: Once results received and if normal, continue annual urological check-ups.\nNo medications prescribed, no allergies, non-smoker.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.333Z",
+    "size": 3387,
+    "status": "ready",
+    "fileName": "b4588897-4164-4e97-a273-368f70f7c759.pdf"
+  },
+  {
+    "id": "86afcc62-bc02-4132-8ea4-94fded2ba652",
+    "originalName": "Espirometria.pdf",
+    "aiName": "Spirometry Report - Gralewski Mariusz - March 2025",
+    "description": "Pulmonary function test (Spirometry/Plethysmography) performed 12/03/2025 at Sanitas, Dept. of Pneumology\nPatient: Male, 41 years, 180 cm, 76 kg\n\nKey spirometric results (pre-bronchodilator):\n- FVC: 4.93 L (89% of predicted) — normal\n- FEV1: 3.86 L (88% of predicted) — normal\n- FEV1/FVC ratio: 78.26% (101% of predicted) — normal, no obstruction\n- MEF50: 3.85 L/s (73% of predicted) — mildly reduced mid-expiratory flow\n- PEF: 8.43 L/s (81% of predicted) — normal\n- MEF25: 1.65 L/s (100% of predicted) — normal\n\nNo post-bronchodilator test performed.\n\nTechnical note: Suboptimal technique — forced expiration time was less than 6 seconds, which may slightly underestimate FVC.\n\nConclusion (by Dr. María Isabel Badorrey Martín): Spirometric values within normal range. No obstructive or restrictive pattern identified.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.323Z",
+    "size": 478624,
+    "status": "ready",
+    "fileName": "467edfb9-8652-41f2-bd6b-52ef0ceca2dc.pdf"
+  },
+  {
+    "id": "4571b2e6-4b07-4a16-aca7-050a08707a26",
+    "originalName": "Ergometria.pdf",
+    "aiName": "Stress Test (Treadmill Bruce Protocol) - March 2025 - Hospital Sanitas Cima Barcelona",
+    "description": "Stress test (ergometry) performed on 12/03/2025 at Hospital Sanitas Cima, Barcelona. Reason: routine cardiac check-up.\n\nKey results — all within normal limits:\n- Protocol: Bruce treadmill, total duration 7:36 min\n- Max workload achieved: 17.30 METs — excellent functional capacity for age and sex (41-year-old male)\n- Max heart rate reached: 176 bpm = 98% of age-predicted maximum (target ≥85%) — appropriate response\n- Resting blood pressure: 110/55 mmHg; max BP during exercise: 160/65 mmHg — normal response\n- No chest pain (angina) during test\n- No arrhythmias detected\n- No ST-segment changes (no signs of myocardial ischemia)\n- Test stopped due to muscular fatigue (not cardiac limitation)\n\nOverall conclusion: Stress test clinically and electrocardiographically NEGATIVE for myocardial ischemia. Good functional capacity. No cardiac concerns identified.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.322Z",
+    "size": 287271,
+    "status": "ready",
+    "fileName": "1b422fb6-7982-44f4-b588-7b490deb588a.pdf"
+  },
+  {
+    "id": "3c7a8d48-cac5-493b-91a8-7d589d12f8d0",
+    "originalName": "Informe otorrino.pdf",
+    "aiName": "ENT Checkup Report - March 2025 - All Normal",
+    "description": "Routine ENT (Ear, Nose & Throat) checkup at Hospital Sanitas Cima, Barcelona — all findings within normal limits.\n\nExaminations performed:\n- Oral cavity, pharynx, and nasal passages: Normal\n- Fibro-rhinolaryngoscopy (endoscopic examination): Normal, vocal cords normal\n- Right ear: Intact tympanic membrane, normal\n- Left ear: Intact tympanic membrane, normal\n- Audiometry (hearing test): Normal\n\nConclusion: Full ENT checkup within normal range. Annual follow-up recommended.\n\nMedical background noted: Dyslipidemia (elevated blood lipids — managed separately). No allergies, no toxic habits.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.319Z",
+    "size": 3309,
+    "status": "ready",
+    "fileName": "4ecccfa7-c5ed-4a79-a917-f12e6f686c67.pdf"
+  },
+  {
+    "id": "bd8b66c4-170e-4829-be34-12cf9abe035f",
+    "originalName": "Ecografia TSA.pdf",
+    "aiName": "Carotid Doppler Ultrasound (TSA) - Mar 2025 - Normal",
+    "description": "Study: Carotid and vertebral artery Doppler ultrasound (Eco Doppler TSA), performed 12/03/2025 at Hospital Sanitas Cima, Barcelona.\n\nRight side: Common, internal, external carotid and vertebral arteries — normal appearance, patent, normal spectral waveforms. ICA/CCA index <2. No atherosclerotic plaques causing significant stenosis. Vertebral artery patent with antegrade flow. Intimal thickness: 0.4 mm (normal).\n\nLeft side: Common, internal, external carotid and vertebral arteries — normal appearance, patent, normal spectral waveforms. ICA/CCA index <2. No atherosclerotic plaques causing significant stenosis. Vertebral artery patent with antegrade flow. Intimal thickness: 0.5 mm (normal, ref: <0.9 mm).\n\nSubclavian arteries: Patent bilaterally with normal triphasic flow.\n\nConclusion: Completely normal study — no significant vascular abnormalities detected. No signs of atherosclerosis or stenosis in the neck vessels supplying the brain.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.315Z",
+    "size": 21054,
+    "status": "ready",
+    "fileName": "cc45c2a3-bc4a-47d4-b5bd-80f4b0ec8441.pdf"
+  },
+  {
+    "id": "781dee46-9bbc-4efb-a1a5-f12c9a522312",
+    "originalName": "0 Informe ok.pdf",
+    "aiName": "Sanitas CIMA Health Checkup Report - March 2025",
+    "description": "KEY FINDINGS REQUIRING FOLLOW-UP:\n\nSigmoid colon polyp (5mm) — detected at 40cm from anal margin, removed during colonoscopy (polypectomy performed); histopathology (anatomía patológica) result PENDING — follow-up colonoscopy frequency will depend on pathology result\nInternal haemorrhoids grade I-II — uncomplicated, found on anoscopy\nLeft kidney: 13mm partially calcified nodular lesion — classified as possible Bosniak type IIF cyst; requires imaging follow-up to confirm benign nature\nProstate: inhomogeneous echotexture with surgical capsule fibrosis (volume 22cc, normal for age) — history of prostatitis (now asymptomatic); family history of paternal uncle with prostate adenocarcinoma — annual urology review and PSA monitoring recommended\n\nCARDIOVASCULAR (all reassuring):\nStress test (ergometry): negative for myocardial ischaemia, good functional capacity, no arrhythmias\nEchocardiogram: no significant abnormalities\nCarotid Doppler (TSA): no atherosclerotic plaques, intimal thickness 0.4mm (R) / 0.5mm (L) — normal\nBP: 110/55 mmHg; HR: 83 bpm\nKnown hypercholesterolaemia — on statin therapy; blood tests reported within normal limits\n\nOTHER RESULTS (all normal):\nBMI 24.54 (height 180cm, weight 79.5kg) — normal range\nBlood and urine analyses: no significant abnormalities\nChest X-ray: normal lung parenchyma, normal cardiac silhouette\nAbdominal ultrasound: liver, gallbladder, pancreas, spleen normal; no renal calculi\nSpirometry: within normal range\nOphthalmology: normal\nENT (audiometry, laryngoscopy): normal\n\nRECOMMENDATIONS:\nAwait sigmoid polyp pathology result — determines colonoscopy surveillance interval\nAnnual urology review with PSA (family risk)\nAnnual general checkup",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.305Z",
+    "size": 3071167,
+    "status": "ready",
+    "fileName": "63ba88d8-0b9a-44c4-a699-311a58dfcd4a.pdf"
+  },
+  {
+    "id": "c3d308c0-1b02-4b38-8b9e-eca39e3a40b4",
+    "originalName": "Analitica.pdf",
+    "aiName": "Blood Panel Checkup Results 2025-03-12 Sanitas CIMA Barcelona",
+    "description": "RDW (anisocytosis index) 11.3% — below reference range (12.2–16.4%), low RDW is generally not clinically concerning and may indicate uniform red cell size\n% Monocytes 13.0% — mildly elevated (ref: 5.3–12.4%); absolute monocyte count 0.6 10e3/µL is within normal range; mild monocytosis can be associated with minor infection or inflammation, typically not alarming in isolation\nBilirubin total 1.13 mg/dL — marginally above upper reference (ref: 0.3–1.2); slight elevation, may suggest mild Gilbert's syndrome or transient cause; liver enzymes (GOT, GPT, GGT) all normal\nHepatitis B surface antibody (anti-HBs) <2.0 mIU/mL — below protective threshold of 10 mIU/mL; patient has NO immunity against Hepatitis B (no prior infection, no effective vaccination); Hepatitis B surface antigen and core antibody both negative; Hepatitis C antibody negative. Hepatitis B vaccination is recommended.\nLipid profile: all within normal range — Total cholesterol 167 mg/dL (<200), LDL 101 mg/dL (<130), HDL 50 mg/dL (>40), Triglycerides 80 mg/dL (<150); cardiovascular risk indices favorable\nThyroid function normal: TSH 2.05 mcU/mL, T3 0.90 ng/mL, Free T4 1.07 ng/dL — all within reference\nTumor markers (CEA 1.42, AFP 1.51) within normal limits\nGlucose 93 mg/dL, kidney function (creatinine 0.89, eGFR >90), coagulation, and urinalysis all normal",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.295Z",
+    "size": 217855,
+    "status": "ready",
+    "fileName": "e4030886-79f9-48f0-a6ba-62a7d9241226.pdf"
+  },
+  {
+    "id": "247cdc25-4563-4b1d-bf1d-59e489766611",
+    "originalName": "Audiometria.pdf",
+    "aiName": "Audiometry Results - March 2025 - Hospital Sanitas CIMA",
+    "description": "Audiometry performed on 12/03/2025 at Hospital Sanitas CIMA (ENT Department), Barcelona. Ordered by Dr. Anna Puiggros Casas.\n\nRight ear (Orella Dreta) — air conduction thresholds:\n• 250 Hz: 10 dB, 500 Hz: 10 dB, 1000 Hz: 5 dB, 2000 Hz: 0 dB, 4000 Hz: 15 dB, 8000 Hz: 10 dB\n• Hearing loss (AMA scale): 0.5% — within normal limits\n\nLeft ear (Orella Esquerra) — air conduction thresholds:\n• 250 Hz: 5 dB, 500 Hz: 5 dB, 1000 Hz: 10 dB, 2000 Hz: 5 dB, 4000 Hz: 15 dB, 8000 Hz: 15 dB\n• Hearing loss (AMA scale): 0.6% — within normal limits\n\nAll thresholds are within the normal hearing range (≤25 dB across frequencies).\nConclusion: 'Dentro de la normalidad' — results entirely normal bilaterally. No significant hearing loss detected.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.292Z",
+    "size": 165427,
+    "status": "ready",
+    "fileName": "f43638c1-264a-4887-954d-19dc4e0fc09f.pdf"
+  },
+  {
+    "id": "48f41520-dd6f-4c8f-bd8f-dadb04c7f40a",
+    "originalName": "Ecocardiograma Doppler.pdf",
+    "aiName": "Echocardiogram Report 2025-03-12 Hospital CIMA Sanitas",
+    "description": "Overall conclusion: No significant abnormalities — normal echocardiogram.\nLeft ventricle (LV): Normal size and wall thickness, excellent systolic function. Ejection fraction (EF): 70% (normal ≥55%).\nRight heart: Normal dimensions and function. TAPSE 23 mm (normal ≥17 mm).\nLeft atrium & aortic root: Not dilated (LA 34 mm, aortic root 30 mm — both within normal limits).\nMitral valve: Morphologically normal; minimal regurgitation (Grade I — clinically insignificant). Normal diastolic filling pattern (E/A ratio 1.34).\nAortic valve: Appears tricuspid with thin leaflets, normal opening/closing; no regurgitation. Max velocity 1.08 m/s, max gradient 4.7 mmHg — normal.\nTricuspid valve: No regurgitation detected.\nPericardium: No pericardial effusion.\nInferior vena cava: Not dilated, good inspiratory collapse — normal right atrial pressure.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.290Z",
+    "size": 288517,
+    "status": "ready",
+    "fileName": "f3e86f3d-653b-466b-bdf0-6b1c05bc8874.pdf"
+  },
+  {
+    "id": "d158e9b6-6aa3-4c9a-9ec2-7d40e23d9df6",
+    "originalName": "Colonoscopia.pdf",
+    "aiName": "Colonoscopy Report - March 2025 - Sigmoid Polyp Removed",
+    "description": "Procedure: Colonoscopy (colorectal cancer screening) with polypectomy, performed 13/03/2025 at Hospital Sanitas Cima, Barcelona.\nFindings: Small 5mm polyp found in the sigmoid colon at 40cm from the anal margin — successfully removed with forceps (polypectomy).\nOther findings: Grade I-II internal hemorrhoids (uncomplicated); rectal exam normal; cecal floor, ileocecal valve, and appendicular foramen all normal; mucosa and vascularization otherwise normal throughout.\nBowel preparation quality: Good (Boston score 2-2-2).\nNo immediate complications reported.\nImportant: Seek emergency care if severe abdominal pain or bleeding occurs after the procedure.\nPathology result of removed polyp not included — follow-up may be needed to confirm histology and determine next colonoscopy interval.",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.280Z",
+    "size": 18832,
+    "status": "ready",
+    "fileName": "c1fb8db2-e6c7-4e20-be68-87b8e7e8dfd0.pdf"
+  },
+  {
+    "id": "16eed914-140b-4734-93e7-0f43b4f6366b",
+    "originalName": "Ecografia Abdominal y RVP.pdf",
+    "aiName": "Abdominal and Renal-Vesico-Prostatic Ultrasound 2025-03-12",
+    "description": "KEY FINDING – Left kidney: 13mm partially calcified nodular lesion, classified as Bosniak IIF cyst — requires follow-up imaging (CT or MRI) to monitor for potential malignant transformation\nLeft kidney size: 12.8 x 5.1 cm (normal); right kidney: 11 x 4.4 cm (normal); no stones, no hydronephrosis in either kidney\nProstate: 22cc volume (normal for age), inhomogeneous echotexture with surgical capsule fibrosis noted — clinically relevant finding worth discussing with urologist\nBladder: pre-void volume 421cc, smooth walls, no masses; post-void residual urine: zero (normal)\nAbdominal ultrasound: liver, pancreas, spleen all normal; no focal liver lesions; gallbladder distended with thin walls and no gallstones\nPortal system and abdominal aorta: normal caliber and flow\nAction required: Bosniak IIF cysts carry a ~5-10% risk of malignancy and require periodic imaging surveillance — follow-up should be arranged with a urologist",
+    "mimeType": "application/pdf",
+    "uploadedAt": "2026-03-05T12:58:17.275Z",
+    "size": 22978,
+    "status": "ready",
+    "fileName": "4c10a48c-2ef7-4acd-942e-11b0983dcde0.pdf"
+  }
+]

@@ -15,6 +15,7 @@ export interface FileRecord {
   size: number;
   status: "analyzing" | "ready" | "error";
   fileName: string; // saved filename in uploads dir
+  thumbnailFile: string | null; // filename of thumbnail in uploads dir
 }
 
 export function ensureUploadsDir() {
@@ -57,4 +58,15 @@ export function updateFile(id: string, updates: Partial<FileRecord>): FileRecord
   files[idx] = { ...files[idx], ...updates };
   saveFiles(files);
   return files[idx];
+}
+
+export function clearAllFiles() {
+  ensureUploadsDir();
+  for (const file of fs.readdirSync(UPLOADS_DIR)) {
+    try {
+      const p = path.join(UPLOADS_DIR, file);
+      if (fs.statSync(p).isFile()) fs.unlinkSync(p);
+    } catch {}
+  }
+  fs.writeFileSync(METADATA_FILE, JSON.stringify([]));
 }

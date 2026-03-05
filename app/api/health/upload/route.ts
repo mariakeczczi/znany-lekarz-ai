@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
 import { addFile, updateFile, getUploadsDir, ensureUploadsDir } from "@/lib/health-storage";
-import { analyzeFile } from "@/lib/health-analysis";
+import { generateThumbnail, analyzeFile } from "@/lib/health-analysis";
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -36,11 +36,19 @@ export async function POST(req: NextRequest) {
     size: file.size,
     status: "analyzing",
     fileName: savedFileName,
+    thumbnailFile: null,
   });
 
-  // Analyze in background — response returns immediately with "analyzing" status
+  // Background: generate thumbnail fast, then run Claude analysis
   setImmediate(async () => {
     try {
+      // Step 1: thumbnail (fast — LibreOffice or just flag the original image)
+      const thumbnailFile = generateThumbnail(filePath, file.type, record.id, savedFileName);
+      if (thumbnailFile) {
+        updateFile(record.id, { thumbnailFile });
+      }
+
+      // Step 2: Claude analysis (slower)
       const { name, description } = await analyzeFile(filePath, file.type, file.name);
       updateFile(record.id, { aiName: name, description, status: "ready" });
     } catch (e) {

@@ -2,10 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import { getUploadsDir } from "@/lib/health-storage";
 
 const client = new Anthropic();
 
-// LibreOffice binary on macOS
 const SOFFICE = "/Applications/LibreOffice.app/Contents/MacOS/soffice";
 
 const SYSTEM_PROMPT = `You are a medical document analyzer. Your task is to analyze uploaded medical documents and return:
@@ -29,6 +29,57 @@ type ContentBlock =
   | { type: "image"; source: { type: "base64"; media_type: ImageMediaType; data: string } }
   | { type: "document"; source: { type: "base64"; media_type: "application/pdf"; data: string } };
 
+/**
+ * Generates a thumbnail for the uploaded file.
+ * - Images: returns the original fileName (serve the file directly)
+ * - PDF/Word: converts first page to PNG via LibreOffice, returns "{id}_thumb.png"
+ * Returns null if generation fails.
+ */
+export function generateThumbnail(
+  filePath: string,
+  mimeType: string,
+  id: string,
+  fileName: string
+): string | null {
+  // Images: use the original file as thumbnail
+  if (mimeType.startsWith("image/")) {
+    return fileName;
+  }
+
+  // PDF or Word: convert first page via LibreOffice
+  const uploadsDir = getUploadsDir();
+  const thumbName = `${id}_thumb.png`;
+  const thumbPath = path.join(uploadsDir, thumbName);
+
+  try {
+    execSync(`"${SOFFICE}" --headless --convert-to png "${filePath}" --outdir "${uploadsDir}"`, {
+      timeout: 30000,
+    });
+
+    const basename = path.basename(filePath, path.extname(filePath));
+    const pngs = fs
+      .readdirSync(uploadsDir)
+      .filter((f) => f.startsWith(basename) && f.endsWith(".png"))
+      .sort();
+
+    if (pngs.length > 0) {
+      fs.renameSync(path.join(uploadsDir, pngs[0]), thumbPath);
+      // Clean up any extra pages
+      pngs.slice(1).forEach((f) => {
+        try { fs.unlinkSync(path.join(uploadsDir, f)); } catch {}
+      });
+      return thumbName;
+    }
+  } catch (e) {
+    console.error("Thumbnail generation failed:", e);
+  }
+
+  return null;
+}
+
+/**
+ * Analyzes a medical file with Claude and returns a smart name and clinical description.
+ */
 export async function analyzeFile(
   filePath: string,
   mimeType: string,
@@ -103,17 +154,17 @@ function buildContentBlocks(filePath: string, mimeType: string): ContentBlock[] 
 }
 
 function convertDocToImages(filePath: string): string[] {
-  const dir = path.dirname(filePath);
+  const uploadsDir = getUploadsDir();
   const basename = path.basename(filePath, path.extname(filePath));
   try {
-    execSync(`"${SOFFICE}" --headless --convert-to png "${filePath}" --outdir "${dir}"`, {
+    execSync(`"${SOFFICE}" --headless --convert-to png "${filePath}" --outdir "${uploadsDir}"`, {
       timeout: 30000,
     });
     return fs
-      .readdirSync(dir)
+      .readdirSync(uploadsDir)
       .filter((f) => f.startsWith(basename) && f.endsWith(".png"))
       .sort()
-      .map((f) => path.join(dir, f));
+      .map((f) => path.join(uploadsDir, f));
   } catch (e) {
     console.error("LibreOffice conversion failed:", e);
     return [];
