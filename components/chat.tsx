@@ -130,13 +130,12 @@ export function Chat() {
         }
 
         if (event.type === "tool_result") {
-          // Mark last tool_call step as done, add result step
+          // Mark last in-progress tool_call step as done (turns blue pill → green)
           const steps = [...(m.steps ?? [])];
           const lastCallIdx = [...steps].reverse().findIndex((s) => s.type === "tool_call" && !s.done);
           if (lastCallIdx !== -1) {
             steps[steps.length - 1 - lastCallIdx] = { ...steps[steps.length - 1 - lastCallIdx], done: true };
           }
-          steps.push({ type: "tool_result", label: "Results received", done: true });
           return { ...m, steps };
         }
 

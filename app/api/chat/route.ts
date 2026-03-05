@@ -51,17 +51,22 @@ Użytkownik wgrał następujące dokumenty medyczne. Jeśli szukana specjalizacj
 ${fileContext}`;
 }
 
-function formatToolCall(name: string, input: unknown): string {
-  if (name === "search_doctor" && input && typeof input === "object") {
+// Returns null for internal tools that should be hidden from the user
+function formatToolCall(name: string, input: unknown): string | null {
+  // Hide internal Agent SDK tools
+  if (name === "ToolSearch") return null;
+
+  // MCP tool name arrives as "mcp__doctor-search__search_doctor"
+  if (name.includes("search_doctor") && input && typeof input === "object") {
     const i = input as Record<string, unknown>;
     const parts: string[] = [];
     if (i.specializationNames) parts.push((i.specializationNames as string[]).join(", "));
     if (i.location) parts.push(i.location as string);
     if (i.onlineOnly) parts.push("online");
     if (i.insuranceNames) parts.push((i.insuranceNames as string[]).join(", "));
-    return `Searching: ${parts.join(" · ")}`;
+    return parts.length > 0 ? `Searching: ${parts.join(" · ")}` : "Searching for doctors...";
   }
-  return `Calling: ${name}`;
+  return null; // hide any other unknown tools
 }
 
 // Build env for the claude subprocess — strip CLAUDECODE to allow running inside a Claude Code session
@@ -123,9 +128,8 @@ export async function POST(req: NextRequest) {
               if (block.type === "text" && block.text) {
                 emit({ type: "text", content: block.text });
               } else if (block.type === "tool_use") {
-                // Show which tool is being called and with what params
                 const label = formatToolCall(block.name ?? "", block.input);
-                emit({ type: "tool_call", label });
+                if (label !== null) emit({ type: "tool_call", label });
               }
             }
           } else if (message.type === "user" && "message" in message) {
@@ -134,7 +138,7 @@ export async function POST(req: NextRequest) {
               content?: Array<{ type: string }>;
             };
             const hasResult = msg.content?.some((b) => b.type === "tool_result");
-            if (hasResult) emit({ type: "tool_result" });
+            if (hasResult) emit({ type: "tool_result" }); // marks previous step as done (green)
           }
         }
         controller.enqueue(
