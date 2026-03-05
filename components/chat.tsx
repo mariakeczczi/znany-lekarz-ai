@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Send, Stethoscope, Loader2, User, Search, CheckCircle } from "lucide-react";
 
 interface StatusStep {
@@ -155,18 +154,7 @@ export function Chat() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <header className="border-b bg-card px-4 py-3 flex items-center gap-3 shadow-sm">
-        <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground">
-          <Stethoscope className="w-5 h-5" />
-        </div>
-        <div>
-          <h1 className="font-semibold text-sm">ZnanyLekarz AI</h1>
-          <p className="text-xs text-muted-foreground">Wyszukiwarka lekarzy</p>
-        </div>
-        <Badge variant="secondary" className="ml-auto text-xs">Beta</Badge>
-      </header>
-
+    <div className="flex flex-col h-full bg-background">
       <ScrollArea ref={scrollAreaRef} className="flex-1 px-4 py-4">
         <div className="max-w-2xl mx-auto space-y-4">
           {messages.map((message) => (
