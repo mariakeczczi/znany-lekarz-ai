@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { getFiles } from "@/lib/health-storage";
+import { getFiles, getUploadsDir } from "@/lib/health-storage";
+import path from "path";
 
 // nova-search-mcp runs at http://localhost:3003/mcp
 // Start it with: pnpm nx serve nova-search-mcp
@@ -74,23 +75,30 @@ Pola:
 - availability: max 3 najbliższe dni z wolnymi slotami (do 4 slotów na dzień); pusta tablica jeśli brak danych`;
 
 function buildSystemPrompt(): string {
-  const files = getFiles().filter((f) => f.status === "ready" && f.description);
+  const uploadsDir = getUploadsDir();
+  const files = getFiles().filter((f) => f.status === "ready");
   if (files.length === 0) return BASE_SYSTEM_PROMPT;
 
-  const fileContext = files
-    .map((f) => `- **${f.aiName}**: ${f.description}`)
+  const fileList = files
+    .map((f) => `- **${f.aiName}** — Full path: ${path.join(uploadsDir, f.fileName)}`)
     .join("\n");
 
   return `${BASE_SYSTEM_PROMPT}
 
 ## Dokumenty medyczne użytkownika
-Użytkownik wgrał następujące dokumenty medyczne. Jeśli szukana specjalizacja jest powiązana z treścią tych dokumentów, uwzględnij to w odpowiedzi — wspomnij powiązanie i użyj odpowiednich parametrów (np. diseaseNames, contentQuery).
+Użytkownik wgrał dokumenty medyczne. Jeśli szukana specjalizacja może być powiązana z jego historią medyczną, użyj narzędzia **Read** żeby przeczytać odpowiednie pliki i uwzględnij te informacje w wyszukiwaniu (np. diseaseNames, contentQuery).
 
-${fileContext}`;
+${fileList}`;
+}
+
+function buildFileNameMap(): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const f of getFiles()) map.set(f.fileName, f.aiName);
+  return map;
 }
 
 // Returns null for internal tools that should be hidden from the user
-function formatToolCall(name: string, input: unknown): string | null {
+function formatToolCall(name: string, input: unknown, fileNameMap: Map<string, string>): string | null {
   // Hide internal Agent SDK tools
   if (name === "ToolSearch") return null;
 
@@ -116,8 +124,18 @@ function formatToolCall(name: string, input: unknown): string | null {
     }
   }
 
-  // Hide low-level shell/scan tools and file reads (internal SDK files, not user docs)
-  if (name === "Bash" || name === "Glob" || name === "Grep" || name === "Read") return null;
+  if (name === "Read") {
+    const i = (input ?? {}) as Record<string, unknown>;
+    const p = (i.file_path as string) ?? "";
+    const base = path.basename(p);
+    const aiName = fileNameMap.get(base);
+    // Hide internal SDK temp files (toolu_*.json / toolu_*.txt)
+    if (!aiName && base.startsWith("toolu_")) return null;
+    return `Reading: ${aiName ?? base}`;
+  }
+
+  // Hide low-level shell/scan tools
+  if (name === "Bash" || name === "Glob" || name === "Grep") return null;
 
   // Show any other unexpected tool calls generically
   return `Working...`;
@@ -154,6 +172,8 @@ export async function POST(req: NextRequest) {
         const emit = (payload: object) =>
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
 
+        const fileNameMap = buildFileNameMap();
+
         for await (const message of query({
           prompt,
           options: {
@@ -182,7 +202,7 @@ export async function POST(req: NextRequest) {
               if (block.type === "text" && block.text) {
                 emit({ type: "text", content: block.text });
               } else if (block.type === "tool_use") {
-                const label = formatToolCall(block.name ?? "", block.input);
+                const label = formatToolCall(block.name ?? "", block.input, fileNameMap);
                 if (label !== null) emit({ type: "tool_call", label });
               }
             }
