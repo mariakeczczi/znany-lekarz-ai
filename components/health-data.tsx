@@ -197,7 +197,7 @@ export function HealthData() {
   return (
     <div className="flex h-full overflow-hidden">
       {/* Left: Chat */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <ScrollArea ref={chatScrollRef} className="flex-1 px-4 py-4">
           <div className="max-w-2xl mx-auto space-y-3">
             {messages.map((msg) => (
