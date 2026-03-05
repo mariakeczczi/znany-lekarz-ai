@@ -116,14 +116,8 @@ function formatToolCall(name: string, input: unknown): string | null {
     }
   }
 
-  if (name === "Read") {
-    const i = (input ?? {}) as Record<string, unknown>;
-    const p = (i.file_path as string) ?? "";
-    return `Reading: ${p.split("/").pop() ?? p}`;
-  }
-
-  // Hide low-level shell/scan tools
-  if (name === "Bash" || name === "Glob" || name === "Grep") return null;
+  // Hide low-level shell/scan tools and file reads (internal SDK files, not user docs)
+  if (name === "Bash" || name === "Glob" || name === "Grep" || name === "Read") return null;
 
   // Show any other unexpected tool calls generically
   return `Working...`;
