@@ -234,7 +234,7 @@ function MessageBubble({ message }: { message: Message }) {
 
         {/* Main bubble */}
         {(!isUser || hasContent) && (
-          <div className={`rounded-2xl px-4 py-3 text-sm ${isUser ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
+          <div className={`rounded-2xl px-4 py-3 text-sm ${isUser ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-emerald-50 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-100 dark:border-emerald-900 rounded-tl-sm"}`}>
             {hasContent ? (
               <>
                 <FormattedMessage content={hasDoctors ? text : message.content} />
