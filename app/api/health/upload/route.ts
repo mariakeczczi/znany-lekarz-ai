@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { addFile, updateFile, getUploadsDir, ensureUploadsDir } from "@/lib/health-storage";
 import { generateThumbnail, analyzeFile } from "@/lib/health-analysis";
+import { updateProfileFromFacts } from "@/lib/memory";
 
 export async function POST(req: NextRequest) {
   let formData: FormData;
@@ -49,8 +50,13 @@ export async function POST(req: NextRequest) {
       }
 
       // Step 2: Claude analysis (slower)
-      const { name, description } = await analyzeFile(filePath, file.type, file.name);
+      const { name, description, profileFacts } = await analyzeFile(filePath, file.type, file.name);
       updateFile(record.id, { aiName: name, description, status: "ready" });
+
+      // Step 3: Update health profile with durable facts found in document
+      if (profileFacts.length > 0) {
+        await updateProfileFromFacts(profileFacts);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Analysis failed";
       updateFile(record.id, { status: "error", description: msg });

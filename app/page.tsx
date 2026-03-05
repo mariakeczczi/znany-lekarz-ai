@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Chat } from "@/components/chat";
 import { HealthData } from "@/components/health-data";
+import { MemoryView } from "@/components/memory-view";
 import { Stethoscope } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-type Tab = "doctor" | "health";
+type Tab = "doctor" | "health" | "memory";
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("doctor");
@@ -27,7 +28,7 @@ export default function Home() {
       </header>
 
       <div className="flex border-b bg-card shrink-0">
-        {(["doctor", "health"] as Tab[]).map((t) => (
+        {(["doctor", "health", "memory"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -37,13 +38,15 @@ export default function Home() {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t === "doctor" ? "Doctor Search" : "Health Data"}
+            {t === "doctor" ? "Doctor Search" : t === "health" ? "Health Data" : "Memory"}
           </button>
         ))}
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {tab === "doctor" ? <Chat /> : <HealthData />}
+        <div className={tab === "doctor" ? "h-full" : "hidden"}><Chat /></div>
+        <div className={tab === "health" ? "h-full" : "hidden"}><HealthData /></div>
+        <div className={tab === "memory" ? "h-full" : "hidden"}><MemoryView /></div>
       </div>
     </div>
   );

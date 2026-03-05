@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { getFiles, getUploadsDir } from "@/lib/health-storage";
+import { loadProfileContext, updateProfileInBackground } from "@/lib/memory";
 import path from "path";
 
 // nova-search-mcp runs at http://localhost:3003/mcp
@@ -71,21 +72,25 @@ Pola:
 - photoUrl: URL zdjęcia lekarza, null jeśli brak
 - availability: max 3 najbliższe dni z wolnymi slotami (do 4 slotów na dzień); pusta tablica jeśli brak danych`;
 
-function buildSystemPrompt(): string {
+async function buildSystemPrompt(): Promise<string> {
   const uploadsDir = getUploadsDir();
   const files = getFiles().filter((f) => f.status === "ready");
-  if (files.length === 0) return BASE_SYSTEM_PROMPT;
+  const profile = await loadProfileContext();
 
-  const fileList = files
-    .map((f) => `- **${f.aiName}** — Full path: ${path.join(uploadsDir, f.fileName)}`)
-    .join("\n");
+  const parts: string[] = [BASE_SYSTEM_PROMPT];
 
-  return `${BASE_SYSTEM_PROMPT}
+  if (profile) {
+    parts.push(`\n## Profil zdrowotny użytkownika\nUżyj tych informacji automatycznie przy wyszukiwaniu (miasto, ubezpieczenie, choroby).\n\n${profile}`);
+  }
 
-## Dokumenty medyczne użytkownika
-Użytkownik wgrał dokumenty medyczne. Jeśli szukana specjalizacja może być powiązana z jego historią medyczną, użyj narzędzia **Read** żeby przeczytać odpowiednie pliki i uwzględnij te informacje w wyszukiwaniu (np. diseaseNames, contentQuery).
+  if (files.length > 0) {
+    const fileList = files
+      .map((f) => `- **${f.aiName}** — Full path: ${path.join(uploadsDir, f.fileName)}`)
+      .join("\n");
+    parts.push(`\n## Dokumenty medyczne użytkownika\nJeśli szukana specjalizacja może być powiązana z jego historią medyczną, użyj narzędzia **Read** żeby przeczytać odpowiednie pliki i uwzględnij te informacje w wyszukiwaniu (np. diseaseNames, contentQuery).\n\n${fileList}`);
+  }
 
-${fileList}`;
+  return parts.join("\n");
 }
 
 function buildFileNameMap(): Map<string, string> {
@@ -162,6 +167,8 @@ export async function POST(req: NextRequest) {
     ? `${conversationHistory}\nUżytkownik: ${lastMessage.content}`
     : lastMessage.content;
 
+  const systemPrompt = await buildSystemPrompt();
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -170,12 +177,13 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
 
         const fileNameMap = buildFileNameMap();
+        let agentResponse = "";
 
         for await (const message of query({
           prompt,
           options: {
             model: "claude-sonnet-4-6",
-            systemPrompt: buildSystemPrompt(),
+            systemPrompt,
             env: buildSubprocessEnv(),
             permissionMode: "bypassPermissions",
             allowDangerouslySkipPermissions: true,
@@ -197,6 +205,7 @@ export async function POST(req: NextRequest) {
             };
             for (const block of msg.content ?? []) {
               if (block.type === "text" && block.text) {
+                agentResponse += block.text;
                 emit({ type: "text", content: block.text });
               } else if (block.type === "tool_use") {
                 const label = formatToolCall(block.name ?? "", block.input, fileNameMap);
@@ -212,6 +221,15 @@ export async function POST(req: NextRequest) {
             if (hasResult) emit({ type: "tool_result" }); // marks previous step as done (green)
           }
         }
+
+        // Background: update profile with anything new (city, insurance preferences etc.)
+        if (agentResponse) {
+          updateProfileInBackground([
+            ...messages,
+            { role: "assistant", content: agentResponse },
+          ]);
+        }
+
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`)
         );

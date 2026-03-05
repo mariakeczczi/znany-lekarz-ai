@@ -19,8 +19,16 @@ For the description:
 - Use a short list format for multiple findings
 - If results are normal, briefly confirm that with a few key values
 
+For profileFacts — extract ONLY durable, actionable facts worth saving long-term:
+- Chronic diagnoses (e.g., "Type 2 diabetes diagnosed 2020")
+- Current medications with dosage (e.g., "Metformin 500mg twice daily")
+- Allergies
+- Patient demographics if present (age, sex)
+- Do NOT include: single test values within normal range, appointment dates, doctor names
+- Return empty array if nothing profile-worthy
+
 Respond ONLY with valid JSON in this exact format:
-{"name": "Descriptive File Name", "description": "Finding 1\\nFinding 2\\nFinding 3"}`;
+{"name": "Descriptive File Name", "description": "Finding 1\\nFinding 2\\nFinding 3", "profileFacts": ["fact1", "fact2"]}`;
 
 type ImageMediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 
@@ -84,7 +92,7 @@ export async function analyzeFile(
   filePath: string,
   mimeType: string,
   originalName: string
-): Promise<{ name: string; description: string }> {
+): Promise<{ name: string; description: string; profileFacts: string[] }> {
   const contentBlocks = buildContentBlocks(filePath, mimeType);
 
   const response = await client.messages.create({
@@ -108,12 +116,13 @@ export async function analyzeFile(
       return {
         name: parsed.name ?? originalName,
         description: parsed.description ?? "No description available.",
+        profileFacts: Array.isArray(parsed.profileFacts) ? parsed.profileFacts : [],
       };
     }
   } catch {
     // fall through
   }
-  return { name: originalName, description: text || "Unable to analyze document." };
+  return { name: originalName, description: text || "Unable to analyze document.", profileFacts: [] };
 }
 
 function buildContentBlocks(filePath: string, mimeType: string): ContentBlock[] {

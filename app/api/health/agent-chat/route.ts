@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { getFiles, getUploadsDir } from "@/lib/health-storage";
+import { loadProfileContext, updateProfileInBackground } from "@/lib/memory";
 import path from "path";
 
 function buildSubprocessEnv(): Record<string, string> {
@@ -11,7 +12,7 @@ function buildSubprocessEnv(): Record<string, string> {
   return env;
 }
 
-function buildSystemPrompt(): string {
+async function buildSystemPrompt(): Promise<string> {
   const uploadsDir = getUploadsDir();
   const files = getFiles().filter((f) => f.status === "ready");
 
@@ -25,8 +26,13 @@ function buildSystemPrompt(): string {
           .join("\n")
       : "No files uploaded yet.";
 
-  return `You are a personal health data assistant with direct access to the user's uploaded medical documents.
+  const profile = await loadProfileContext();
+  const profileSection = profile
+    ? `\n## Health Profile\n${profile}\n`
+    : "";
 
+  return `You are a personal health data assistant with direct access to the user's uploaded medical documents.
+${profileSection}
 ## Available Medical Files
 ${fileList}
 
@@ -101,6 +107,8 @@ export async function POST(req: NextRequest) {
     ? `${history}\nUser: ${lastMessage.content}`
     : lastMessage.content;
 
+  const systemPrompt = await buildSystemPrompt();
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -109,11 +117,13 @@ export async function POST(req: NextRequest) {
 
       try {
         const fileNameMap = buildFileNameMap();
+        let agentResponse = "";
+
         for await (const message of query({
           prompt,
           options: {
             model: "claude-sonnet-4-6",
-            systemPrompt: buildSystemPrompt(),
+            systemPrompt,
             env: buildSubprocessEnv(),
             permissionMode: "bypassPermissions",
             allowDangerouslySkipPermissions: true,
@@ -128,6 +138,7 @@ export async function POST(req: NextRequest) {
             };
             for (const block of msg.content ?? []) {
               if (block.type === "text" && block.text) {
+                agentResponse += block.text;
                 emit({ type: "text", content: block.text });
               } else if (block.type === "tool_use") {
                 const label = formatToolCall(block.name ?? "", block.input, fileNameMap);
@@ -140,6 +151,14 @@ export async function POST(req: NextRequest) {
               emit({ type: "tool_result" });
             }
           }
+        }
+
+        // Background: update profile with anything new from this conversation
+        if (agentResponse) {
+          updateProfileInBackground([
+            ...messages,
+            { role: "assistant", content: agentResponse },
+          ]);
         }
 
         emit({ type: "done" });
