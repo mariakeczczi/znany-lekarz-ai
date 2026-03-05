@@ -162,12 +162,11 @@ export async function POST(req: NextRequest) {
         const emit = (payload: object) =>
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
 
-        // Emit synthetic steps for health files pre-loaded into system prompt
+        // Emit a single synthetic step when health files are pre-loaded into system prompt
         if (healthFiles.length > 0) {
-          for (const f of healthFiles) {
-            emit({ type: "tool_call", label: `Checking: ${f.aiName}` });
-            emit({ type: "tool_result" });
-          }
+          const topic = lastMessage.content as string;
+          emit({ type: "tool_call", label: `Checking your health records for context related to: ${topic.slice(0, 60)}` });
+          emit({ type: "tool_result" });
         }
 
         for await (const message of query({
