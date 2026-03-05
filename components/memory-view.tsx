@@ -3,19 +3,21 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export function MemoryView() {
+export function MemoryView({ active }: { active: boolean }) {
   const [content, setContent] = useState("");
   const [saved, setSaved] = useState(true);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!active) return;
     fetch("/api/memory")
       .then((r) => r.json())
       .then((d) => {
         setContent(d.content ?? "");
         setLoading(false);
+        setSaved(true);
       });
-  }, []);
+  }, [active]);
 
   async function handleSave() {
     await fetch("/api/memory", {

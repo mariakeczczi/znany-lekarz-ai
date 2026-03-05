@@ -46,7 +46,7 @@ export default function Home() {
       <div className="flex-1 overflow-hidden">
         <div className={tab === "doctor" ? "h-full" : "hidden"}><Chat /></div>
         <div className={tab === "health" ? "h-full" : "hidden"}><HealthData /></div>
-        <div className={tab === "memory" ? "h-full" : "hidden"}><MemoryView /></div>
+        <div className={tab === "memory" ? "h-full" : "hidden"}><MemoryView active={tab === "memory"} /></div>
       </div>
     </div>
   );
