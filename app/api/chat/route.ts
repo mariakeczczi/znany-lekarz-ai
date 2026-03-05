@@ -63,24 +63,32 @@ async function buildSystemPrompt(): Promise<string> {
 interface RawDoc { [key: string]: unknown }
 
 function mapToDoctor(r: RawDoc): { name: string; specialization: string; rating: number | null; reviewCount: number | null; location: string; clinic: string | null; price: number | null; photoUrl: string | null; availability: [] } | null {
-  const name = String(r.name ?? r.fullName ?? r.displayName ?? [r.title, r.firstName, r.lastName].filter(Boolean).join(" ") ?? "").trim();
-  if (!name) return null;
+  // ZnanyLekarz API: name=firstName, surname=lastName, prefix=title
+  const nameParts = [r.prefix, r.name, r.surname].filter(Boolean);
+  const name = nameParts.length > 0 ? nameParts.join(" ") : String(r.fullName ?? r.displayName ?? "");
+  if (!name.trim()) return null;
 
-  const specs = r.specializations ?? r.specialties ?? r.specializationNames ?? [];
-  const specialization = Array.isArray(specs) && specs.length > 0
-    ? String(typeof specs[0] === "string" ? specs[0] : (specs[0] as RawDoc).name ?? "")
+  const specs = (r.specializations ?? r.specialties ?? []) as RawDoc[];
+  const specialization = specs.length > 0
+    ? String(specs[0].name ?? "")
     : String(r.specialization ?? r.specialty ?? "");
 
-  const rating = (r.rating ?? r.ratingScore ?? r.avgRating ?? r.score ?? null) as number | null;
-  const reviewCount = (r.reviewCount ?? r.opinionsCount ?? r.reviewsCount ?? r.ratingsCount ?? null) as number | null;
+  const rating = (r.rating ?? r.ratingScore ?? null) as number | null;
+  const reviewCount = (r.opinions ?? r.reviewCount ?? r.opinionsCount ?? null) as number | null;
 
-  const city = String((r.address as RawDoc)?.city ?? r.city ?? r.cityName ?? "");
-  const district = String((r.address as RawDoc)?.district ?? r.district ?? "");
-  const location = [city, district].filter(Boolean).join(", ") || String(r.location ?? "");
+  const addresses = (r.addresses ?? []) as RawDoc[];
+  const addr = addresses[0] ?? {};
+  const city = String(addr.city ?? r.city ?? "");
+  const district = String(addr.district ?? "");
+  const location = [city, district].filter(Boolean).join(", ");
 
-  const clinic = String(r.clinic ?? r.facilityName ?? r.clinicName ?? r.facilityDisplayName ?? "") || null;
-  const price = (r.price ?? r.visitFee ?? r.consultationPrice ?? r.visitPrice ?? null) as number | null;
-  const photoUrl = String(r.photoUrl ?? r.photo ?? r.avatar ?? r.imageUrl ?? "") || null;
+  const clinic = String(addr.name ?? r.facilityName ?? "") || null;
+
+  const services = (addr.services ?? []) as RawDoc[];
+  const priceVal = services.length > 0 ? (services[0].price as RawDoc)?.value : null;
+  const price = (priceVal && Number(priceVal) > 0) ? Number(priceVal) : null;
+
+  const photoUrl = String(r.avatar ?? r.photoUrl ?? r.photo ?? "") || null;
 
   return { name, specialization, rating, reviewCount, location, clinic, price, photoUrl, availability: [] };
 }
