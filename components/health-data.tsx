@@ -14,6 +14,8 @@ import {
   ImageIcon,
   FileIcon,
   Trash2,
+  Globe,
+  CheckCircle,
 } from "lucide-react";
 
 interface FileRecord {
@@ -28,11 +30,18 @@ interface FileRecord {
   thumbnailFile: string | null;
 }
 
+interface StatusStep {
+  type: "tool_call" | "tool_result";
+  label: string;
+  done: boolean;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   isStreaming?: boolean;
+  steps?: StatusStep[];
 }
 
 export function HealthData() {
@@ -138,7 +147,7 @@ export function HealthData() {
 
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: text.trim() };
     const assistantId = (Date.now() + 1).toString();
-    const assistantMsg: Message = { id: assistantId, role: "assistant", content: "", isStreaming: true };
+    const assistantMsg: Message = { id: assistantId, role: "assistant", content: "", isStreaming: true, steps: [] };
 
     const updatedMessages = [...messages, userMsg];
     setMessages([...updatedMessages, assistantMsg]);
@@ -146,7 +155,7 @@ export function HealthData() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/health/chat", {
+      const res = await fetch("/api/health/agent-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -167,15 +176,27 @@ export function HealthData() {
           if (!line.startsWith("data: ")) continue;
           try {
             const event = JSON.parse(line.slice(6));
-            if (event.type === "text") {
-              setMessages((prev) =>
-                prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + event.content } : m))
-              );
-            } else if (event.type === "done") {
-              setMessages((prev) =>
-                prev.map((m) => (m.id === assistantId ? { ...m, isStreaming: false } : m))
-              );
-            }
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== assistantId) return m;
+                if (event.type === "text" || event.type === "result") {
+                  return { ...m, content: event.content ?? "" };
+                }
+                if (event.type === "tool_call") {
+                  const newStep: StatusStep = { type: "tool_call", label: event.label ?? "Working...", done: false };
+                  return { ...m, steps: [...(m.steps ?? []), newStep] };
+                }
+                if (event.type === "tool_result") {
+                  const steps = [...(m.steps ?? [])];
+                  const lastIdx = [...steps].reverse().findIndex((s) => s.type === "tool_call" && !s.done);
+                  if (lastIdx !== -1) steps[steps.length - 1 - lastIdx] = { ...steps[steps.length - 1 - lastIdx], done: true };
+                  return { ...m, steps };
+                }
+                if (event.type === "done") return { ...m, isStreaming: false };
+                if (event.type === "error") return { ...m, content: `Error: ${event.content}`, isStreaming: false };
+                return m;
+              })
+            );
           } catch {
             // ignore
           }
@@ -360,8 +381,32 @@ function FileTypeIcon({ mimeType }: { mimeType: string }) {
   return <FileIcon className="w-8 h-8 text-muted-foreground/50" />;
 }
 
+function AgentStep({ step }: { step: StatusStep }) {
+  const isSearch = step.label.startsWith("Searching:");
+  return (
+    <div
+      className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border transition-all ${
+        step.done
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400"
+          : "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-400"
+      }`}
+    >
+      {step.done ? (
+        <CheckCircle className="w-3 h-3 shrink-0" />
+      ) : isSearch ? (
+        <Globe className="w-3 h-3 shrink-0 animate-pulse" />
+      ) : (
+        <Loader2 className="w-3 h-3 shrink-0 animate-spin" />
+      )}
+      <span>{step.label}</span>
+    </div>
+  );
+}
+
 function ChatBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
+  const hasSteps = (message.steps?.length ?? 0) > 0;
+
   return (
     <div className={`flex gap-2 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
       <div
@@ -371,24 +416,33 @@ function ChatBubble({ message }: { message: Message }) {
       >
         {isUser ? <User className="w-3.5 h-3.5" /> : <HeartPulse className="w-3.5 h-3.5" />}
       </div>
-      <div
-        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-          isUser ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"
-        }`}
-      >
-        {message.content ? (
-          <>
-            <p className="whitespace-pre-wrap">{message.content}</p>
-            {message.isStreaming && (
-              <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse align-middle" />
-            )}
-          </>
-        ) : (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            <span className="text-xs">Thinking...</span>
-          </span>
+      <div className="max-w-[80%] space-y-2">
+        {!isUser && hasSteps && (
+          <div className="space-y-1">
+            {message.steps!.map((step, i) => (
+              <AgentStep key={i} step={step} />
+            ))}
+          </div>
         )}
+        <div
+          className={`rounded-2xl px-4 py-2.5 text-sm ${
+            isUser ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"
+          }`}
+        >
+          {message.content ? (
+            <>
+              <p className="whitespace-pre-wrap">{message.content}</p>
+              {message.isStreaming && (
+                <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse align-middle" />
+              )}
+            </>
+          ) : (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span className="text-xs">Thinking...</span>
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
