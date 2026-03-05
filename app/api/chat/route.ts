@@ -32,6 +32,7 @@ Ważne zasady:
 3. Wyniki ZAWSZE przedstawiaj jako blok \`\`\`doctors (patrz poniżej) — max 5 lekarzy
 4. Jeśli jest mało wyników, zaproponuj poszerzenie kryteriów
 5. Odpowiadaj po polsku, bądź empatyczny
+6. Gdy użytkownik prosi o opinie lekarza i podaje URL profilu — użyj WebFetch żeby pobrać stronę, a następnie wyciągnij i przedstaw opinie pacjentów (imię/inicjały, ocena, treść, data)
 
 Nie musisz podawać countryCode — jest już ustawiony w nagłówku x-tenant-id.
 
@@ -50,6 +51,7 @@ Po wyszukaniu zawsze zwróć wyniki w formacie JSON w bloku \`\`\`doctors, a pod
     "clinic": "Centrum Medyczne Mokotów",
     "price": 250,
     "photoUrl": null,
+    "profileUrl": "https://www.znany-lekarz.pl/lekarz/jan-kowalski/",
     "availability": [
       { "day": "Pon", "date": "10.03", "slots": ["9:00", "11:30", "14:00"] },
       { "day": "Wt", "date": "11.03", "slots": ["10:00", "15:30"] },
@@ -68,6 +70,7 @@ Pola:
 - clinic: nazwa placówki, null jeśli brak
 - price: cena wizyty w PLN (liczba), null jeśli brak
 - photoUrl: URL zdjęcia lekarza, null jeśli brak
+- profileUrl: URL pełnego profilu lekarza na ZnanyLekarz/Doctoralia, null jeśli brak
 - availability: max 3 najbliższe dni z wolnymi slotami (do 4 slotów na dzień); pusta tablica jeśli brak danych`;
 
 function buildSystemPrompt(): string {
