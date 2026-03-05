@@ -42,9 +42,9 @@ function formatToolCall(name: string, input: unknown): string {
     if (i.location) parts.push(i.location as string);
     if (i.onlineOnly) parts.push("online");
     if (i.insuranceNames) parts.push((i.insuranceNames as string[]).join(", "));
-    return `Szukam: ${parts.join(" · ")}`;
+    return `Searching: ${parts.join(" · ")}`;
   }
-  return `Wywołuję: ${name}`;
+  return `Calling: ${name}`;
 }
 
 // Build env for the claude subprocess — strip CLAUDECODE to allow running inside a Claude Code session

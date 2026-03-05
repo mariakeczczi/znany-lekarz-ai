@@ -126,7 +126,7 @@ export function Chat() {
         }
 
         if (event.type === "tool_call") {
-          const newStep: StatusStep = { type: "tool_call", label: event.label ?? "Wywołuję narzędzie...", done: false };
+          const newStep: StatusStep = { type: "tool_call", label: event.label ?? "Calling tool...", done: false };
           return { ...m, steps: [...(m.steps ?? []), newStep] };
         }
 
@@ -137,7 +137,7 @@ export function Chat() {
           if (lastCallIdx !== -1) {
             steps[steps.length - 1 - lastCallIdx] = { ...steps[steps.length - 1 - lastCallIdx], done: true };
           }
-          steps.push({ type: "tool_result", label: "Otrzymuję wyniki...", done: true });
+          steps.push({ type: "tool_result", label: "Results received", done: true });
           return { ...m, steps };
         }
 
@@ -244,7 +244,7 @@ function MessageBubble({ message }: { message: Message }) {
             ) : (
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                <span className="text-xs">Myślę...</span>
+                <span className="text-xs">Thinking...</span>
               </span>
             )}
           </div>
