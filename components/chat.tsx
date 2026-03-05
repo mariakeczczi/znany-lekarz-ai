@@ -54,8 +54,9 @@ export function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const deltaBufferRef = useRef<{ id: string; text: string } | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const charQueueRef = useRef<string[]>([]);
+  const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typingTargetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -125,33 +126,50 @@ export function Chat() {
         )
       );
     } finally {
+      stopTypingInterval();
+      charQueueRef.current = [];
       setIsLoading(false);
       inputRef.current?.focus();
     }
   }
 
-  function flushDelta() {
-    rafRef.current = null;
-    if (!deltaBufferRef.current) return;
-    const { id, text } = deltaBufferRef.current;
-    deltaBufferRef.current = null;
-    setMessages((prev) =>
-      prev.map((m) => m.id === id ? { ...m, content: (m.content ?? "") + text } : m)
-    );
+  function startTypingInterval(assistantId: string) {
+    if (typingIntervalRef.current) return;
+    typingTargetIdRef.current = assistantId;
+    typingIntervalRef.current = setInterval(() => {
+      const queue = charQueueRef.current;
+      if (queue.length === 0) return;
+      // Drain up to 3 chars per tick to stay ahead if queue builds up
+      const batch = queue.splice(0, Math.min(3, queue.length)).join("");
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === typingTargetIdRef.current ? { ...m, content: (m.content ?? "") + batch } : m
+        )
+      );
+    }, 16); // ~60fps cadence, feels like character-by-character
+  }
+
+  function stopTypingInterval() {
+    if (typingIntervalRef.current) {
+      clearInterval(typingIntervalRef.current);
+      typingIntervalRef.current = null;
+    }
+    // Flush remaining chars instantly
+    const remaining = charQueueRef.current.splice(0).join("");
+    if (remaining && typingTargetIdRef.current) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === typingTargetIdRef.current ? { ...m, content: (m.content ?? "") + remaining } : m
+        )
+      );
+    }
+    typingTargetIdRef.current = null;
   }
 
   function handleEvent(event: { type: string; content?: string; label?: string; doctors?: Doctor[] }, assistantId: string) {
-    // Buffer text_delta and flush via rAF — max one re-render per frame
     if (event.type === "text_delta") {
-      const delta = event.content ?? "";
-      if (deltaBufferRef.current) {
-        deltaBufferRef.current.text += delta;
-      } else {
-        deltaBufferRef.current = { id: assistantId, text: delta };
-      }
-      if (!rafRef.current) {
-        rafRef.current = requestAnimationFrame(flushDelta);
-      }
+      charQueueRef.current.push(...(event.content ?? "").split(""));
+      startTypingInterval(assistantId);
       return;
     }
 
@@ -183,6 +201,7 @@ export function Chat() {
         }
 
         if (event.type === "done") {
+          stopTypingInterval();
           return { ...m, isStreaming: false };
         }
 
