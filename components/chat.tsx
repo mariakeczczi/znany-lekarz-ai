@@ -291,9 +291,6 @@ function MessageBubble({ message }: { message: Message }) {
             {hasContent ? (
               <>
                 <FormattedMessage content={displayContent} />
-                {message.isStreaming && (
-                  <span className="inline-block w-0.5 h-[1em] bg-current ml-0.5 align-middle animate-[blink_0.7s_step-end_infinite]" />
-                )}
               </>
             ) : (
               <span className="flex items-center gap-1.5 text-muted-foreground">
