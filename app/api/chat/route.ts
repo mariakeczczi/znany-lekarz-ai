@@ -1,8 +1,11 @@
 import { NextRequest } from "next/server";
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import Anthropic from "@anthropic-ai/sdk";
 import { getFiles, getUploadsDir } from "@/lib/health-storage";
 import { loadProfileContext, updateProfileInBackground } from "@/lib/memory";
 import path from "path";
+
+const anthropic = new Anthropic();
 
 // nova-search-mcp runs at http://localhost:3003/mcp
 // Start it with: pnpm nx serve nova-search-mcp
@@ -201,65 +204,108 @@ export async function POST(req: NextRequest) {
 
         const fileNameMap = buildFileNameMap();
         let agentResponse = "";
+        let streamedDirectly = false;
         const pendingSearchIds = new Set<string>();
 
-        for await (const message of query({
-          prompt,
-          options: {
-            model: "claude-sonnet-4-6",
-            systemPrompt,
-            env: buildSubprocessEnv(),
-            permissionMode: "bypassPermissions",
-            allowDangerouslySkipPermissions: true,
-            mcpServers: {
-              "doctor-search": {
-                type: "http",
-                url: MCP_URL,
-                headers: { "x-tenant-id": TENANT_ID },
+        // Promise that resolves when search_doctor results arrive (or null if no search)
+        let resolveSearch!: (doctors: ReturnType<typeof parseMCPResult>) => void;
+        const searchResultPromise = new Promise<ReturnType<typeof parseMCPResult>>(
+          (r) => (resolveSearch = r)
+        );
+
+        // Run Agent SDK in background — collect tool calls / text / profile data
+        const agentPromise = (async () => {
+          for await (const message of query({
+            prompt,
+            options: {
+              model: "claude-sonnet-4-6",
+              systemPrompt,
+              env: buildSubprocessEnv(),
+              permissionMode: "bypassPermissions",
+              allowDangerouslySkipPermissions: true,
+              mcpServers: {
+                "doctor-search": {
+                  type: "http",
+                  url: MCP_URL,
+                  headers: { "x-tenant-id": TENANT_ID },
+                },
               },
+              maxTurns: 10,
             },
-            maxTurns: 10,
-          },
-        })) {
-          if ("result" in message && message.result) {
-            emit({ type: "result", content: message.result });
-          } else if (message.type === "assistant" && "message" in message) {
-            const msg = message.message as {
-              content?: Array<{ type: string; text?: string; name?: string; id?: string; input?: unknown }>;
-            };
-            for (const block of msg.content ?? []) {
-              if (block.type === "text" && block.text) {
-                agentResponse += block.text;
-                emit({ type: "text", content: block.text });
-              } else if (block.type === "tool_use") {
-                if ((block.name ?? "").includes("search_doctor") && block.id) {
-                  pendingSearchIds.add(block.id as string);
+          })) {
+            if ("result" in message && message.result) {
+              if (!streamedDirectly) emit({ type: "result", content: message.result });
+              else agentResponse += message.result as string;
+            } else if (message.type === "assistant" && "message" in message) {
+              const msg = message.message as {
+                content?: Array<{ type: string; text?: string; name?: string; id?: string; input?: unknown }>;
+              };
+              for (const block of msg.content ?? []) {
+                if (block.type === "text" && block.text) {
+                  agentResponse += block.text;
+                  if (!streamedDirectly) emit({ type: "text", content: block.text });
+                } else if (block.type === "tool_use") {
+                  if ((block.name ?? "").includes("search_doctor") && block.id) {
+                    pendingSearchIds.add(block.id as string);
+                  }
+                  if (!streamedDirectly) {
+                    const label = formatToolCall(block.name ?? "", block.input, fileNameMap);
+                    if (label !== null) emit({ type: "tool_call", label });
+                  }
                 }
-                const label = formatToolCall(block.name ?? "", block.input, fileNameMap);
-                if (label !== null) emit({ type: "tool_call", label });
+              }
+            } else if (message.type === "user" && "message" in message) {
+              const msg = message.message as {
+                content?: Array<{ type: string; tool_use_id?: string; content?: unknown }>;
+              };
+              for (const block of msg.content ?? []) {
+                if (block.type !== "tool_result") continue;
+                if (block.tool_use_id && pendingSearchIds.has(block.tool_use_id)) {
+                  pendingSearchIds.delete(block.tool_use_id);
+                  const doctors = parseMCPResult(block.content);
+                  resolveSearch(doctors); // signal search is done
+                  emit({ type: "tool_result" });
+                } else {
+                  if (!streamedDirectly) emit({ type: "tool_result" });
+                }
               }
             }
-          } else if (message.type === "user" && "message" in message) {
-            // tool results coming back
-            const msg = message.message as {
-              content?: Array<{ type: string; tool_use_id?: string; content?: unknown }>;
-            };
-            for (const block of msg.content ?? []) {
-              if (block.type !== "tool_result") continue;
-              // If this is a search_doctor result → parse and emit doctors immediately
-              if (block.tool_use_id && pendingSearchIds.has(block.tool_use_id)) {
-                pendingSearchIds.delete(block.tool_use_id);
-                const doctors = parseMCPResult(block.content);
-                if (doctors && doctors.length > 0) {
-                  emit({ type: "doctors", doctors });
-                }
-              }
-              emit({ type: "tool_result" }); // marks step as done (green)
+          }
+          // If agent finished without a search (e.g. asked for city), resolve with null
+          resolveSearch(null);
+        })();
+
+        // Wait for search result
+        const doctors = await searchResultPromise;
+
+        if (doctors && doctors.length > 0) {
+          streamedDirectly = true;
+          emit({ type: "doctors", doctors });
+
+          // Stream a short commentary via Haiku (true token streaming)
+          const doctorSummary = doctors
+            .map((d) => `${d?.name} (${d?.specialization ?? ""}, ${d?.location ?? ""})`)
+            .join("; ");
+          const commentStream = await anthropic.messages.stream({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 200,
+            system: "Jesteś asystentem wyszukiwania lekarzy ZnanyLekarz. Odpowiadaj wyłącznie po polsku. Bądź zwięzły.",
+            messages: [{
+              role: "user",
+              content: `Użytkownik szukał: "${lastMessage.content}"\nZnaleziono lekarzy: ${doctorSummary}\n\nNapisz 1-2 zdania komentarza do wyników. Możesz zaproponować zawężenie wyszukiwania.`,
+            }],
+          });
+          for await (const chunk of commentStream) {
+            if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
+              emit({ type: "text_delta", content: chunk.delta.text });
             }
           }
         }
 
-        // Background: update profile with anything new (city, insurance preferences etc.)
+        // Wait for agent to fully finish (needed for profile update)
+        await agentPromise;
+
+        // Background: update profile with anything new
         if (agentResponse) {
           updateProfileInBackground([
             ...messages,
@@ -267,9 +313,7 @@ export async function POST(req: NextRequest) {
           ]);
         }
 
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n\n`)
-        );
+        emit({ type: "done" });
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Wystąpił nieznany błąd";
         controller.enqueue(

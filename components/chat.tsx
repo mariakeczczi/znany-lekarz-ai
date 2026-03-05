@@ -137,6 +137,10 @@ export function Chat() {
           return { ...m, content: event.content ?? "" };
         }
 
+        if (event.type === "text_delta") {
+          return { ...m, content: (m.content ?? "") + (event.content ?? "") };
+        }
+
         if (event.type === "doctors") {
           return { ...m, doctors: event.doctors ?? [] };
         }
