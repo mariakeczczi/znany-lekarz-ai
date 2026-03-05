@@ -170,7 +170,7 @@ export function Chat() {
       <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 px-4 py-4">
         <div className="max-w-2xl mx-auto space-y-4">
           {messages.map((message) => (
-            <MessageBubble key={message.id} message={message} onSendMessage={sendMessage} />
+            <MessageBubble key={message.id} message={message} />
           ))}
           {messages.length === 1 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
@@ -208,7 +208,7 @@ export function Chat() {
   );
 }
 
-function MessageBubble({ message, onSendMessage }: { message: Message; onSendMessage: (text: string) => void }) {
+function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
   const hasContent = !!message.content;
   const hasSteps = (message.steps?.length ?? 0) > 0;
@@ -256,7 +256,7 @@ function MessageBubble({ message, onSendMessage }: { message: Message; onSendMes
         {hasDoctors && (
           <div className="space-y-3">
             {doctors.map((doc, i) => (
-              <DoctorCard key={i} doctor={doc} onShowReviews={onSendMessage} />
+              <DoctorCard key={i} doctor={doc} />
             ))}
           </div>
         )}
@@ -307,7 +307,7 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-function DoctorCard({ doctor, onShowReviews }: { doctor: Doctor; onShowReviews: (text: string) => void }) {
+function DoctorCard({ doctor }: { doctor: Doctor }) {
   const initials = doctor.name
     .split(" ")
     .filter((w) => /^[A-ZŁŚŻŹ]/.test(w))
@@ -386,15 +386,7 @@ function DoctorCard({ doctor, onShowReviews }: { doctor: Doctor; onShowReviews: 
         </div>
       )}
 
-      {/* Show reviews button */}
-      {doctor.profileUrl && (
-        <button
-          onClick={() => onShowReviews(`Pokaż opinie i szczegółowy profil lekarza ${doctor.name}. URL profilu: ${doctor.profileUrl}`)}
-          className="w-full text-xs py-1.5 rounded-lg border border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground transition-colors font-medium"
-        >
-          Pokaż opinie
-        </button>
-      )}
+
     </div>
   );
 }
