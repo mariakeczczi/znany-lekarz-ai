@@ -31,46 +31,11 @@ Parametry narzędzia search_doctor:
 Ważne zasady:
 1. Jeśli użytkownik nie podał lokalizacji i nie szuka online — zapytaj o miasto
 2. Specjalizację wyciągnij z opisu dolegliwości (np. "boli kolano" → ortopeda)
-3. Wyniki ZAWSZE przedstawiaj jako blok \`\`\`doctors (patrz poniżej) — max 5 lekarzy
+3. Po wyszukaniu napisz TYLKO krótki komentarz (1-2 zdania). NIE generuj JSON ani żadnych bloków kodu — aplikacja wyświetla karty lekarzy automatycznie.
 4. Jeśli jest mało wyników, zaproponuj poszerzenie kryteriów
 5. Odpowiadaj po polsku, bądź empatyczny
 
-Nie musisz podawać countryCode — jest już ustawiony w nagłówku x-tenant-id.
-
-## Format wyników
-
-Po wyszukaniu zwróć WYŁĄCZNIE blok \`\`\`doctors bez żadnego tekstu przed nim, a za blokiem opcjonalnie 1-2 zdania komentarza. Nie pisz nic w stylu "Szukam dla Ciebie..." ani "Oto wyniki..." przed blokiem. Maksymalnie 5 lekarzy.
-
-\`\`\`doctors
-[
-  {
-    "name": "dr n. med. Jan Kowalski",
-    "specialization": "Kardiolog",
-    "rating": 4.8,
-    "reviewCount": 312,
-    "location": "Warszawa, Mokotów",
-    "clinic": "Centrum Medyczne Mokotów",
-    "price": 250,
-    "photoUrl": null,
-    "availability": [
-      { "day": "Pon", "date": "10.03", "slots": ["9:00", "11:30", "14:00"] },
-      { "day": "Wt", "date": "11.03", "slots": ["10:00", "15:30"] },
-      { "day": "Śr", "date": "12.03", "slots": [] }
-    ]
-  }
-]
-\`\`\`
-
-Pola:
-- name: pełne imię i tytuł lekarza
-- specialization: specjalizacja po polsku
-- rating: ocena 0-5 (liczba zmiennoprzecinkowa), null jeśli brak
-- reviewCount: liczba opinii, null jeśli brak
-- location: miasto + dzielnica lub ulica
-- clinic: nazwa placówki, null jeśli brak
-- price: cena wizyty w PLN (liczba), null jeśli brak
-- photoUrl: URL zdjęcia lekarza, null jeśli brak
-- availability: max 3 najbliższe dni z wolnymi slotami (do 4 slotów na dzień); pusta tablica jeśli brak danych`;
+Nie musisz podawać countryCode — jest już ustawiony w nagłówku x-tenant-id.`;
 
 async function buildSystemPrompt(): Promise<string> {
   const uploadsDir = getUploadsDir();
@@ -92,6 +57,56 @@ async function buildSystemPrompt(): Promise<string> {
 
   return parts.join("\n");
 }
+
+// ─── MCP result → Doctor cards ────────────────────────────────────────────────
+
+interface RawDoc { [key: string]: unknown }
+
+function mapToDoctor(r: RawDoc): { name: string; specialization: string; rating: number | null; reviewCount: number | null; location: string; clinic: string | null; price: number | null; photoUrl: string | null; availability: [] } | null {
+  const name = String(r.name ?? r.fullName ?? r.displayName ?? [r.title, r.firstName, r.lastName].filter(Boolean).join(" ") ?? "").trim();
+  if (!name) return null;
+
+  const specs = r.specializations ?? r.specialties ?? r.specializationNames ?? [];
+  const specialization = Array.isArray(specs) && specs.length > 0
+    ? String(typeof specs[0] === "string" ? specs[0] : (specs[0] as RawDoc).name ?? "")
+    : String(r.specialization ?? r.specialty ?? "");
+
+  const rating = (r.rating ?? r.ratingScore ?? r.avgRating ?? r.score ?? null) as number | null;
+  const reviewCount = (r.reviewCount ?? r.opinionsCount ?? r.reviewsCount ?? r.ratingsCount ?? null) as number | null;
+
+  const city = String((r.address as RawDoc)?.city ?? r.city ?? r.cityName ?? "");
+  const district = String((r.address as RawDoc)?.district ?? r.district ?? "");
+  const location = [city, district].filter(Boolean).join(", ") || String(r.location ?? "");
+
+  const clinic = String(r.clinic ?? r.facilityName ?? r.clinicName ?? r.facilityDisplayName ?? "") || null;
+  const price = (r.price ?? r.visitFee ?? r.consultationPrice ?? r.visitPrice ?? null) as number | null;
+  const photoUrl = String(r.photoUrl ?? r.photo ?? r.avatar ?? r.imageUrl ?? "") || null;
+
+  return { name, specialization, rating, reviewCount, location, clinic, price, photoUrl, availability: [] };
+}
+
+function parseMCPResult(content: unknown): ReturnType<typeof mapToDoctor>[] | null {
+  try {
+    let data: unknown = content;
+    if (typeof data === "string") data = JSON.parse(data);
+    // content blocks array → find text block
+    if (Array.isArray(data) && data.length > 0 && typeof (data[0] as RawDoc).type === "string") {
+      const tb = (data as Array<{ type: string; text?: string }>).find(b => b.type === "text");
+      if (tb?.text) data = JSON.parse(tb.text);
+    }
+    let arr: RawDoc[] | null = null;
+    if (Array.isArray(data)) arr = data as RawDoc[];
+    else if (data && typeof data === "object") {
+      const o = data as Record<string, unknown>;
+      const found = o.doctors ?? o.results ?? o.data ?? o.items;
+      if (Array.isArray(found)) arr = found as RawDoc[];
+    }
+    if (!arr || arr.length === 0) return null;
+    return arr.slice(0, 5).map(mapToDoctor).filter(Boolean);
+  } catch { return null; }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 function buildFileNameMap(): Map<string, string> {
   const map = new Map<string, string>();
@@ -178,6 +193,7 @@ export async function POST(req: NextRequest) {
 
         const fileNameMap = buildFileNameMap();
         let agentResponse = "";
+        const pendingSearchIds = new Set<string>();
 
         for await (const message of query({
           prompt,
@@ -201,13 +217,16 @@ export async function POST(req: NextRequest) {
             emit({ type: "result", content: message.result });
           } else if (message.type === "assistant" && "message" in message) {
             const msg = message.message as {
-              content?: Array<{ type: string; text?: string; name?: string; input?: unknown }>;
+              content?: Array<{ type: string; text?: string; name?: string; id?: string; input?: unknown }>;
             };
             for (const block of msg.content ?? []) {
               if (block.type === "text" && block.text) {
                 agentResponse += block.text;
                 emit({ type: "text", content: block.text });
               } else if (block.type === "tool_use") {
+                if ((block.name ?? "").includes("search_doctor") && block.id) {
+                  pendingSearchIds.add(block.id as string);
+                }
                 const label = formatToolCall(block.name ?? "", block.input, fileNameMap);
                 if (label !== null) emit({ type: "tool_call", label });
               }
@@ -215,10 +234,20 @@ export async function POST(req: NextRequest) {
           } else if (message.type === "user" && "message" in message) {
             // tool results coming back
             const msg = message.message as {
-              content?: Array<{ type: string }>;
+              content?: Array<{ type: string; tool_use_id?: string; content?: unknown }>;
             };
-            const hasResult = msg.content?.some((b) => b.type === "tool_result");
-            if (hasResult) emit({ type: "tool_result" }); // marks previous step as done (green)
+            for (const block of msg.content ?? []) {
+              if (block.type !== "tool_result") continue;
+              // If this is a search_doctor result → parse and emit doctors immediately
+              if (block.tool_use_id && pendingSearchIds.has(block.tool_use_id)) {
+                pendingSearchIds.delete(block.tool_use_id);
+                const doctors = parseMCPResult(block.content);
+                if (doctors && doctors.length > 0) {
+                  emit({ type: "doctors", doctors });
+                }
+              }
+              emit({ type: "tool_result" }); // marks step as done (green)
+            }
           }
         }
 

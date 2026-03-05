@@ -31,6 +31,7 @@ interface Message {
   content: string;
   isStreaming?: boolean;
   steps?: StatusStep[];
+  doctors?: Doctor[];
 }
 
 const SUGGESTIONS = [
@@ -127,13 +128,17 @@ export function Chat() {
     }
   }
 
-  function handleEvent(event: { type: string; content?: string; label?: string }, assistantId: string) {
+  function handleEvent(event: { type: string; content?: string; label?: string; doctors?: Doctor[] }, assistantId: string) {
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== assistantId) return m;
 
         if (event.type === "text" || event.type === "result") {
           return { ...m, content: event.content ?? "" };
+        }
+
+        if (event.type === "doctors") {
+          return { ...m, doctors: event.doctors ?? [] };
         }
 
         if (event.type === "tool_call") {
@@ -211,7 +216,10 @@ function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
   const hasContent = !!message.content;
   const hasSteps = (message.steps?.length ?? 0) > 0;
-  const { text, doctors } = parseContent(message.content);
+  // Prefer early-emitted doctors from MCP; fall back to parsing ```doctors block
+  const parsed = parseContent(message.content);
+  const doctors = (message.doctors && message.doctors.length > 0) ? message.doctors : parsed.doctors;
+  const displayContent = doctors === parsed.doctors ? parsed.text : message.content;
   const hasDoctors = doctors.length > 0;
 
   return (
@@ -234,10 +242,10 @@ function MessageBubble({ message }: { message: Message }) {
 
         {/* Main bubble */}
         {(!isUser || hasContent) && (
-          <div className={`rounded-2xl px-4 py-3 text-sm ${isUser ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-emerald-50 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-100 dark:border-emerald-900 rounded-tl-sm"}`}>
+          <div className={`rounded-2xl px-4 py-3 text-sm ${isUser ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
             {hasContent ? (
               <>
-                <FormattedMessage content={hasDoctors ? text : message.content} />
+                <FormattedMessage content={displayContent} />
                 {message.isStreaming && (
                   <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse align-middle" />
                 )}
