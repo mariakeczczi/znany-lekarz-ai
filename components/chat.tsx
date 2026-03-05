@@ -16,7 +16,6 @@ interface Doctor {
   clinic: string | null;
   price: number | null;
   photoUrl: string | null;
-  profileUrl: string | null;
   availability: Array<{ day: string; date: string; slots: string[] }>;
 }
 
