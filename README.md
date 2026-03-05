@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ZnanyLekarz AI
 
-## Getting Started
+AI-powered doctor search and personal health assistant, built with Claude Agent SDK.
 
-First, run the development server:
+## What it does
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Two features in one app:
+
+### 1. Doctor Search
+Find specialist doctors on ZnanyLekarz/Doctoralia using natural language. Describe symptoms or name a specialty — the agent figures out the right specialist, asks for your city if needed, and returns up to 5 doctor cards with ratings, pricing, location, and available appointment slots.
+
+If you have health documents uploaded, the agent reads them when relevant and uses that context to refine the search (e.g. recommends urologists with oncology experience if your files mention prostate history).
+
+### 2. Health Data
+Upload your medical documents (PDFs, images, Word files). The app:
+- Generates a thumbnail preview for each file
+- Analyzes the content with Claude and assigns a readable name + summary
+- Lets you chat with an AI that can read your files and search the web for medical information
+
+## How it works
+
+```
+Browser → Next.js API route → Claude Agent SDK → Claude Sonnet 4.6
+                                               ↘ MCP: search_doctor (ZnanyLekarz API)
+                                               ↘ Built-in: Read, WebFetch
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Responses stream over SSE. The UI shows agent steps in real time (blue = in progress, green = done).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Doctor Search (`/api/chat`)
+- Connects to a ZnanyLekarz MCP server (`nova-search-mcp`) at `localhost:3003/mcp`
+- Agent calls `search_doctor` with parameters: specialty, location, insurance, price range, etc.
+- Results come back as a `\`\`\`doctors` JSON block, rendered as rich cards in the UI
+- When health files are present, agent reads them via `Read` tool and injects context into the search
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Health Chat (`/api/health/agent-chat`)
+- Agent has access to uploaded files via `Read` tool (full file paths in system prompt)
+- Uses `WebFetch` to look up medical info from PubMed, Mayo Clinic, MedlinePlus
+- File uploads processed in background: thumbnail first (fast), Claude analysis second
 
-## Learn More
+### File storage
+- Files saved to `uploads/` (git-ignored — never committed)
+- Metadata in `uploads/metadata.json`
+- Thumbnails generated via LibreOffice headless for PDF/DOCX, direct serve for images
 
-To learn more about Next.js, take a look at the following resources:
+## Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Next.js 15** (App Router)
+- **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`)
+- **Tailwind CSS + shadcn/ui**
+- **LibreOffice** (headless) — PDF/DOCX thumbnail generation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Running locally
 
-## Deploy on Vercel
+```bash
+pnpm install
+pnpm dev
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Requires:
+- `ANTHROPIC_API_KEY` in `.env.local`
+- `nova-search-mcp` running at `localhost:3003` for doctor search
+- LibreOffice installed at `/Applications/LibreOffice.app` for document thumbnails
