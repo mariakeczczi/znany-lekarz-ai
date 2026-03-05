@@ -5,7 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send, Stethoscope, Loader2, User, Search, CheckCircle } from "lucide-react";
+import { Send, Stethoscope, Loader2, User, Search, CheckCircle, Star, MapPin, CreditCard, Calendar } from "lucide-react";
+
+interface Doctor {
+  name: string;
+  specialization: string;
+  rating: number | null;
+  reviewCount: number | null;
+  location: string;
+  clinic: string | null;
+  price: number | null;
+  photoUrl: string | null;
+  availability: Array<{ day: string; date: string; slots: string[] }>;
+}
 
 interface StatusStep {
   type: "tool_call" | "tool_result";
@@ -199,6 +211,8 @@ function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
   const hasContent = !!message.content;
   const hasSteps = (message.steps?.length ?? 0) > 0;
+  const { text, doctors } = parseContent(message.content);
+  const hasDoctors = doctors.length > 0;
 
   return (
     <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
@@ -208,7 +222,7 @@ function MessageBubble({ message }: { message: Message }) {
         </AvatarFallback>
       </Avatar>
 
-      <div className="max-w-[80%] space-y-2">
+      <div className={`space-y-2 ${hasDoctors ? "flex-1 min-w-0" : "max-w-[80%]"}`}>
         {/* Agent activity steps */}
         {!isUser && hasSteps && (
           <div className="space-y-1">
@@ -223,7 +237,7 @@ function MessageBubble({ message }: { message: Message }) {
           <div className={`rounded-2xl px-4 py-3 text-sm ${isUser ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted rounded-tl-sm"}`}>
             {hasContent ? (
               <>
-                <FormattedMessage content={message.content} />
+                <FormattedMessage content={hasDoctors ? text : message.content} />
                 {message.isStreaming && (
                   <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse align-middle" />
                 )}
@@ -234,6 +248,15 @@ function MessageBubble({ message }: { message: Message }) {
                 <span className="text-xs">Thinking...</span>
               </span>
             )}
+          </div>
+        )}
+
+        {/* Doctor cards */}
+        {hasDoctors && (
+          <div className="space-y-3">
+            {doctors.map((doc, i) => (
+              <DoctorCard key={i} doctor={doc} />
+            ))}
           </div>
         )}
       </div>
@@ -254,6 +277,113 @@ function AgentStep({ step }: { step: StatusStep }) {
         <Search className="w-3 h-3 shrink-0 animate-pulse" />
       )}
       <span>{step.label}</span>
+    </div>
+  );
+}
+
+function parseContent(content: string): { text: string; doctors: Doctor[] } {
+  const match = content.match(/```doctors\s*([\s\S]*?)```/);
+  if (!match) return { text: content, doctors: [] };
+  const text = content.replace(/```doctors[\s\S]*?```/, "").trim();
+  try {
+    const doctors = JSON.parse(match[1]) as Doctor[];
+    return { text, doctors: doctors.slice(0, 5) };
+  } catch {
+    return { text: content, doctors: [] };
+  }
+}
+
+function Stars({ rating }: { rating: number }) {
+  return (
+    <span className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          className={`w-3 h-3 ${i <= Math.round(rating) ? "fill-amber-400 text-amber-400" : "text-gray-200 fill-gray-200"}`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function DoctorCard({ doctor }: { doctor: Doctor }) {
+  const initials = doctor.name
+    .split(" ")
+    .filter((w) => /^[A-ZŁŚŻŹ]/.test(w))
+    .slice(-2)
+    .map((w) => w[0])
+    .join("");
+
+  return (
+    <div className="rounded-xl border bg-card shadow-sm p-4 space-y-3 text-sm">
+      {/* Header */}
+      <div className="flex gap-3">
+        <div className="w-14 h-14 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-sm shrink-0 overflow-hidden">
+          {doctor.photoUrl ? (
+            <img src={doctor.photoUrl} alt={doctor.name} className="w-full h-full object-cover" />
+          ) : (
+            initials || "?"
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold leading-tight truncate">{doctor.name}</p>
+          <p className="text-muted-foreground text-xs mt-0.5">{doctor.specialization}</p>
+          {doctor.rating !== null && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <Stars rating={doctor.rating} />
+              <span className="text-xs font-medium">{doctor.rating.toFixed(1)}</span>
+              {doctor.reviewCount !== null && (
+                <span className="text-xs text-muted-foreground">({doctor.reviewCount})</span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Meta */}
+      <div className="space-y-1 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <MapPin className="w-3 h-3 shrink-0" />
+          <span className="truncate">{doctor.location}{doctor.clinic ? ` · ${doctor.clinic}` : ""}</span>
+        </div>
+        {doctor.price !== null && (
+          <div className="flex items-center gap-1.5">
+            <CreditCard className="w-3 h-3 shrink-0" />
+            <span>{doctor.price} zł</span>
+          </div>
+        )}
+      </div>
+
+      {/* Availability */}
+      {doctor.availability.length > 0 && (
+        <div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1.5">
+            <Calendar className="w-3 h-3" />
+            <span>Najbliższe terminy</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {doctor.availability.map((day) => (
+              <div key={day.date} className="space-y-1">
+                <p className="text-xs text-center text-muted-foreground font-medium">
+                  {day.day} {day.date}
+                </p>
+                {day.slots.length === 0 ? (
+                  <p className="text-xs text-center text-muted-foreground/50">—</p>
+                ) : (
+                  day.slots.slice(0, 4).map((slot) => (
+                    <button
+                      key={slot}
+                      className="w-full text-xs py-1 rounded-md bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors font-medium"
+                    >
+                      {slot}
+                    </button>
+                  ))
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
