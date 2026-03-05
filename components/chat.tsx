@@ -54,6 +54,8 @@ export function Chat() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const deltaBufferRef = useRef<{ id: string; text: string } | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -128,17 +130,37 @@ export function Chat() {
     }
   }
 
+  function flushDelta() {
+    rafRef.current = null;
+    if (!deltaBufferRef.current) return;
+    const { id, text } = deltaBufferRef.current;
+    deltaBufferRef.current = null;
+    setMessages((prev) =>
+      prev.map((m) => m.id === id ? { ...m, content: (m.content ?? "") + text } : m)
+    );
+  }
+
   function handleEvent(event: { type: string; content?: string; label?: string; doctors?: Doctor[] }, assistantId: string) {
+    // Buffer text_delta and flush via rAF — max one re-render per frame
+    if (event.type === "text_delta") {
+      const delta = event.content ?? "";
+      if (deltaBufferRef.current) {
+        deltaBufferRef.current.text += delta;
+      } else {
+        deltaBufferRef.current = { id: assistantId, text: delta };
+      }
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(flushDelta);
+      }
+      return;
+    }
+
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id !== assistantId) return m;
 
         if (event.type === "text" || event.type === "result") {
           return { ...m, content: event.content ?? "" };
-        }
-
-        if (event.type === "text_delta") {
-          return { ...m, content: (m.content ?? "") + (event.content ?? "") };
         }
 
         if (event.type === "doctors") {
@@ -251,7 +273,7 @@ function MessageBubble({ message }: { message: Message }) {
               <>
                 <FormattedMessage content={displayContent} />
                 {message.isStreaming && (
-                  <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse align-middle" />
+                  <span className="inline-block w-0.5 h-[1em] bg-current ml-0.5 align-middle animate-[blink_0.7s_step-end_infinite]" />
                 )}
               </>
             ) : (
