@@ -39,7 +39,7 @@ Nie musisz podawać countryCode — jest już ustawiony w nagłówku x-tenant-id
 
 ## Format wyników
 
-Po wyszukaniu zawsze zwróć wyniki w formacie JSON w bloku \`\`\`doctors, a pod nim krótki komentarz tekstowy (1-2 zdania). Maksymalnie 5 lekarzy.
+Po wyszukaniu zwróć WYŁĄCZNIE blok \`\`\`doctors bez żadnego tekstu przed nim, a za blokiem opcjonalnie 1-2 zdania komentarza. Nie pisz nic w stylu "Szukam dla Ciebie..." ani "Oto wyniki..." przed blokiem. Maksymalnie 5 lekarzy.
 
 \`\`\`doctors
 [
