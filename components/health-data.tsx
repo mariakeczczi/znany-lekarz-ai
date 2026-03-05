@@ -195,156 +195,169 @@ export function HealthData() {
   const readyFiles = files.filter((f) => f.status === "ready");
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Upload zone */}
-      <div className="px-4 pt-4 pb-3 shrink-0">
-        <div
-          className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
-            isDragging
-              ? "border-primary bg-primary/5"
-              : "border-border hover:border-primary/50 hover:bg-muted/20"
-          }`}
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-        >
-          <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-sm font-medium">Drop files or click to upload</p>
-          <p className="text-xs text-muted-foreground mt-1">PDF, images (jpg, png, webp), Word documents</p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.txt,.csv"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
+    <div className="flex h-full overflow-hidden">
+      {/* Left: Chat */}
+      <div className="flex flex-col flex-1 min-w-0">
+        <ScrollArea ref={chatScrollRef} className="flex-1 px-4 py-4">
+          <div className="max-w-2xl mx-auto space-y-3">
+            {messages.map((msg) => (
+              <ChatBubble key={msg.id} message={msg} />
+            ))}
+          </div>
+        </ScrollArea>
+
+        <div className="border-t bg-card px-4 py-3 shrink-0">
+          <form
+            onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
+            className="max-w-2xl mx-auto flex gap-2"
+          >
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                readyFiles.length === 0
+                  ? "Upload files to start chatting..."
+                  : "Ask about your health data..."
+              }
+              disabled={isLoading || readyFiles.length === 0}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={isLoading || !input.trim() || readyFiles.length === 0} size="icon">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </Button>
+          </form>
         </div>
       </div>
 
-      {/* File grid */}
-      {files.length > 0 && (
-        <div className="px-4 pb-3 shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground">
-              {files.length} file{files.length !== 1 ? "s" : ""}
-              {files.some((f) => f.status === "analyzing") && " · analyzing..."}
-            </span>
-            <button
-              onClick={resetAll}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <Trash2 className="w-3 h-3" />
-              Clear all
-            </button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
-            {files.map((file) => (
-              <FileCard key={file.id} file={file} />
-            ))}
+      {/* Right: Files sidebar */}
+      <div className="w-72 border-l bg-muted/20 flex flex-col shrink-0">
+        {/* Upload zone */}
+        <div className="p-3 shrink-0">
+          <div
+            className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+              isDragging
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/50 hover:bg-muted/30"
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+          >
+            <Upload className="w-5 h-5 mx-auto mb-1.5 text-muted-foreground" />
+            <p className="text-xs font-medium">Drop files or click</p>
+            <p className="text-xs text-muted-foreground mt-0.5">PDF, images, Word</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.txt,.csv"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
           </div>
         </div>
-      )}
 
-      <div className="border-t shrink-0" />
+        {/* Files list */}
+        {files.length > 0 && (
+          <>
+            <div className="flex items-center justify-between px-3 pb-1.5 shrink-0">
+              <span className="text-xs text-muted-foreground">
+                {files.length} file{files.length !== 1 ? "s" : ""}
+                {files.some((f) => f.status === "analyzing") && " · analyzing..."}
+              </span>
+              <button
+                onClick={resetAll}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear all
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-3 pb-3">
+              <div className="grid grid-cols-2 gap-3">
+                {files.map((file) => (
+                  <FileCard key={file.id} file={file} />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
-      {/* Chat messages */}
-      <ScrollArea ref={chatScrollRef} className="flex-1 px-4 py-3">
-        <div className="max-w-2xl mx-auto space-y-3">
-          {messages.map((msg) => (
-            <ChatBubble key={msg.id} message={msg} />
-          ))}
-        </div>
-      </ScrollArea>
-
-      {/* Chat input */}
-      <div className="border-t bg-card px-4 py-3 shrink-0">
-        <form
-          onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-          className="max-w-2xl mx-auto flex gap-2"
-        >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              readyFiles.length === 0
-                ? "Upload and wait for file analysis to start chatting..."
-                : "Ask about your health data..."
-            }
-            disabled={isLoading || readyFiles.length === 0}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={isLoading || !input.trim() || readyFiles.length === 0} size="icon">
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </Button>
-        </form>
+        {files.length === 0 && (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-xs text-muted-foreground text-center px-4">
+              No files yet.<br />Upload your medical documents above.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatType(mimeType: string): string {
+  if (mimeType === "application/pdf") return "PDF";
+  if (mimeType.startsWith("image/")) return mimeType.split("/")[1].toUpperCase();
+  if (mimeType.includes("wordprocessingml") || mimeType === "application/msword") return "Word";
+  return mimeType.split("/")[1]?.toUpperCase() ?? "File";
+}
+
 function FileCard({ file }: { file: FileRecord }) {
-  const [expanded, setExpanded] = useState(false);
   const hasThumbnail = !!file.thumbnailFile;
 
   return (
-    <div className="border rounded-xl bg-card text-sm overflow-hidden flex flex-col">
-      {/* Thumbnail area */}
-      <div className="h-28 bg-muted relative overflow-hidden shrink-0">
+    <div className="group cursor-default">
+      {/* Thumbnail — portrait A4 aspect ratio like Dropbox */}
+      <div className="aspect-[3/4] rounded-lg border bg-[#f5f5f5] dark:bg-muted overflow-hidden relative mb-1.5">
         {hasThumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`/api/health/thumbnail/${file.id}`}
             alt={file.aiName}
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-contain p-2 drop-shadow-sm"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <FileTypeIcon mimeType={file.mimeType} large />
+            <FileTypeIcon mimeType={file.mimeType} />
           </div>
         )}
         {file.status === "analyzing" && (
-          <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <div className="absolute inset-0 bg-background/50 flex items-center justify-center rounded-lg">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {file.status === "error" && (
+          <div className="absolute inset-0 bg-destructive/10 flex items-center justify-center rounded-lg">
+            <span className="text-xs text-destructive">Error</span>
           </div>
         )}
       </div>
 
-      {/* Info */}
-      <div className="p-2.5 space-y-1 flex-1">
-        <p className="font-medium text-xs leading-tight line-clamp-2">
-          {file.status === "analyzing" ? file.originalName : file.aiName}
+      {/* Info below — Dropbox style */}
+      <div className="px-0.5">
+        <p className="text-xs font-medium truncate leading-tight">
+          {file.status === "ready" ? file.aiName : file.originalName}
         </p>
-        <p className="text-xs text-muted-foreground truncate">{file.originalName}</p>
-
-        {file.status === "ready" && file.description && (
-          <div>
-            <p className={`text-xs text-muted-foreground leading-relaxed ${!expanded ? "line-clamp-2" : ""}`}>
-              {file.description}
-            </p>
-            {file.description.length > 100 && (
-              <button onClick={() => setExpanded(!expanded)} className="text-xs text-primary mt-0.5">
-                {expanded ? "Less" : "More"}
-              </button>
-            )}
-          </div>
-        )}
-
-        {file.status === "error" && (
-          <p className="text-xs text-destructive">Analysis failed</p>
-        )}
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {formatType(file.mimeType)} · {formatSize(file.size)}
+        </p>
       </div>
     </div>
   );
 }
 
-function FileTypeIcon({ mimeType, large }: { mimeType: string; large?: boolean }) {
-  const size = large ? "w-8 h-8" : "w-4 h-4";
-  if (mimeType === "application/pdf") return <FileText className={`${size} text-red-400`} />;
-  if (mimeType.startsWith("image/")) return <ImageIcon className={`${size} text-blue-400`} />;
-  if (mimeType.includes("word")) return <FileText className={`${size} text-indigo-400`} />;
-  return <FileIcon className={`${size} text-muted-foreground`} />;
+function FileTypeIcon({ mimeType }: { mimeType: string }) {
+  if (mimeType === "application/pdf") return <FileText className="w-8 h-8 text-red-300" />;
+  if (mimeType.startsWith("image/")) return <ImageIcon className="w-8 h-8 text-blue-300" />;
+  if (mimeType.includes("word")) return <FileText className="w-8 h-8 text-indigo-300" />;
+  return <FileIcon className="w-8 h-8 text-muted-foreground/50" />;
 }
 
 function ChatBubble({ message }: { message: Message }) {
