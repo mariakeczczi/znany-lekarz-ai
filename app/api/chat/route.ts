@@ -92,8 +92,8 @@ function formatToolCall(name: string, input: unknown): string | null {
   if (name === "ToolSearch") return null;
 
   // MCP tool name arrives as "mcp__doctor-search__search_doctor"
-  if (name.includes("search_doctor") && input && typeof input === "object") {
-    const i = input as Record<string, unknown>;
+  if (name.includes("search_doctor")) {
+    const i = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
     const parts: string[] = [];
     if (i.specializationNames) parts.push((i.specializationNames as string[]).join(", "));
     if (i.location) parts.push(i.location as string);
@@ -101,7 +101,29 @@ function formatToolCall(name: string, input: unknown): string | null {
     if (i.insuranceNames) parts.push((i.insuranceNames as string[]).join(", "));
     return parts.length > 0 ? `Searching: ${parts.join(" · ")}` : "Searching for doctors...";
   }
-  return null; // hide any other unknown tools
+
+  if (name === "WebFetch") {
+    const i = (input ?? {}) as Record<string, unknown>;
+    const url = (i.url as string) ?? "";
+    try {
+      const host = new URL(url).hostname.replace("www.", "");
+      return `Fetching: ${host}`;
+    } catch {
+      return `Fetching: ${url.slice(0, 60)}`;
+    }
+  }
+
+  if (name === "Read") {
+    const i = (input ?? {}) as Record<string, unknown>;
+    const p = (i.file_path as string) ?? "";
+    return `Reading: ${p.split("/").pop() ?? p}`;
+  }
+
+  // Hide low-level shell/scan tools
+  if (name === "Bash" || name === "Glob" || name === "Grep") return null;
+
+  // Show any other unexpected tool calls generically
+  return `Working...`;
 }
 
 // Build env for the claude subprocess — strip CLAUDECODE to allow running inside a Claude Code session
