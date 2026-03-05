@@ -14,13 +14,15 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-background">
       <header className="border-b bg-card px-4 py-3 flex items-center gap-3 shadow-sm shrink-0">
-        <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground">
-          <Stethoscope className="w-5 h-5" />
-        </div>
-        <div>
-          <h1 className="font-semibold text-sm">ZnanyLekarz AI</h1>
-          <p className="text-xs text-muted-foreground">Your personal health assistant</p>
-        </div>
+        <a href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground">
+            <Stethoscope className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="font-semibold text-sm">ZnanyLekarz AI</h1>
+            <p className="text-xs text-muted-foreground">Your personal health assistant</p>
+          </div>
+        </a>
         <Badge variant="secondary" className="ml-auto text-xs">Beta</Badge>
       </header>
 
