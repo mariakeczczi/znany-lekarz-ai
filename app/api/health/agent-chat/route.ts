@@ -46,12 +46,23 @@ ${fileList}
 - Always recommend professional medical consultation for diagnosis and treatment decisions`;
 }
 
-function formatToolCall(name: string, input: unknown): string {
+// Map from fileName (uuid.pdf) to aiName for display in steps
+function buildFileNameMap(): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const f of getFiles()) {
+    map.set(f.fileName, f.aiName);
+  }
+  return map;
+}
+
+function formatToolCall(name: string, input: unknown, fileNameMap: Map<string, string>): string {
   const i = (input ?? {}) as Record<string, unknown>;
 
   if (name === "Read") {
     const p = (i.file_path as string) ?? "";
-    return `Reading: ${path.basename(p)}`;
+    const base = path.basename(p);
+    const aiName = fileNameMap.get(base);
+    return `Reading: ${aiName ?? base}`;
   }
   if (name === "WebFetch") {
     const url = (i.url as string) ?? "";
@@ -90,6 +101,7 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
 
       try {
+        const fileNameMap = buildFileNameMap();
         for await (const message of query({
           prompt,
           options: {
@@ -111,7 +123,7 @@ export async function POST(req: NextRequest) {
               if (block.type === "text" && block.text) {
                 emit({ type: "text", content: block.text });
               } else if (block.type === "tool_use") {
-                emit({ type: "tool_call", label: formatToolCall(block.name ?? "", block.input) });
+                emit({ type: "tool_call", label: formatToolCall(block.name ?? "", block.input, fileNameMap) });
               }
             }
           } else if (message.type === "user" && "message" in message) {

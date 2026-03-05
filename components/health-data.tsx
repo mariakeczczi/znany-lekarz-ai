@@ -16,6 +16,7 @@ import {
   Trash2,
   Globe,
   CheckCircle,
+  X,
 } from "lucide-react";
 
 interface FileRecord {
@@ -57,6 +58,7 @@ export function HealthData() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
@@ -298,7 +300,7 @@ export function HealthData() {
             <div className="flex-1 overflow-y-auto px-3 pb-3">
               <div className="grid grid-cols-2 gap-3">
                 {files.map((file) => (
-                  <FileCard key={file.id} file={file} />
+                  <FileCard key={file.id} file={file} onClick={() => setSelectedFile(file)} />
                 ))}
               </div>
             </div>
@@ -313,6 +315,9 @@ export function HealthData() {
           </div>
         )}
       </div>
+      {selectedFile && (
+        <FilePreviewModal file={selectedFile} onClose={() => setSelectedFile(null)} />
+      )}
     </div>
   );
 }
@@ -330,11 +335,76 @@ function formatType(mimeType: string): string {
   return mimeType.split("/")[1]?.toUpperCase() ?? "File";
 }
 
-function FileCard({ file }: { file: FileRecord }) {
+function FilePreviewModal({ file, onClose }: { file: FileRecord; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card rounded-2xl overflow-hidden w-full max-w-xl shadow-2xl flex flex-col max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b shrink-0">
+          <div className="min-w-0">
+            <h2 className="font-semibold text-sm leading-snug">{file.aiName}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {file.originalName} · {formatType(file.mimeType)} · {formatSize(file.size)}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="shrink-0 p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Preview */}
+        {file.thumbnailFile && (
+          <div className="bg-[#f0f0f0] dark:bg-muted flex items-center justify-center p-6 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/health/thumbnail/${file.id}`}
+              alt={file.aiName}
+              className="max-w-full max-h-80 object-contain rounded shadow-md"
+            />
+          </div>
+        )}
+
+        {/* Description */}
+        {file.status === "analyzing" && (
+          <div className="px-5 py-4 flex items-center gap-2 text-muted-foreground text-sm">
+            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            Analyzing document...
+          </div>
+        )}
+        {file.status === "ready" && file.description && (
+          <div className="px-5 py-4 overflow-y-auto">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">AI Analysis</p>
+            <p className="text-sm whitespace-pre-wrap leading-relaxed">{file.description}</p>
+          </div>
+        )}
+        {file.status === "error" && (
+          <div className="px-5 py-4 text-sm text-destructive">Analysis failed.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FileCard({ file, onClick }: { file: FileRecord; onClick: () => void }) {
   const hasThumbnail = !!file.thumbnailFile;
 
   return (
-    <div className="group cursor-default">
+    <div className="group cursor-pointer" onClick={onClick}>
       {/* Thumbnail — portrait A4 aspect ratio like Dropbox */}
       <div className="aspect-[3/4] rounded-lg border bg-[#f5f5f5] dark:bg-muted overflow-hidden relative mb-1.5">
         {hasThumbnail ? (
