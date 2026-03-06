@@ -67,6 +67,9 @@ interface RawDoc { [key: string]: unknown }
 
 function mapToDoctor(r: RawDoc): { name: string; specialization: string; rating: number | null; reviewCount: number | null; location: string; clinic: string | null; price: number | null; photoUrl: string | null; availability: [] } | null {
   // ZnanyLekarz API: name=firstName, surname=lastName, prefix=title
+  // Facilities don't have surname — skip them
+  if (!r.surname) return null;
+
   const nameParts = [r.prefix, r.name, r.surname].filter(Boolean);
   const name = nameParts.length > 0 ? nameParts.join(" ") : String(r.fullName ?? r.displayName ?? "");
   if (!name.trim()) return null;
@@ -113,7 +116,7 @@ function parseMCPResult(content: unknown): ReturnType<typeof mapToDoctor>[] | nu
       if (Array.isArray(found)) arr = found as RawDoc[];
     }
     if (!arr || arr.length === 0) return null;
-    return arr.slice(0, 5).map(mapToDoctor).filter(Boolean);
+    return arr.map(mapToDoctor).filter(Boolean).slice(0, 5);
   } catch { return null; }
 }
 
@@ -263,7 +266,7 @@ export async function POST(req: NextRequest) {
                 if (block.tool_use_id && pendingSearchIds.has(block.tool_use_id)) {
                   pendingSearchIds.delete(block.tool_use_id);
                   const doctors = parseMCPResult(block.content);
-                  resolveSearch(doctors); // signal search is done
+                  if (doctors && doctors.length > 0) resolveSearch(doctors);
                   emit({ type: "tool_result" });
                 } else {
                   if (!streamedDirectly) emit({ type: "tool_result" });
@@ -282,18 +285,24 @@ export async function POST(req: NextRequest) {
           streamedDirectly = true;
           emit({ type: "doctors", doctors });
 
-          // Stream a short commentary via Haiku (true token streaming)
+          // Stream commentary via Sonnet with full context (profile, conversation history)
           const doctorSummary = doctors
             .map((d) => `${d?.name} (${d?.specialization ?? ""}, ${d?.location ?? ""})`)
             .join("; ");
           const commentStream = await anthropic.messages.stream({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 200,
-            system: "Jesteś asystentem wyszukiwania lekarzy ZnanyLekarz. Odpowiadaj wyłącznie po polsku. Bądź zwięzły.",
-            messages: [{
-              role: "user",
-              content: `Użytkownik szukał: "${lastMessage.content}"\nZnaleziono lekarzy: ${doctorSummary}\n\nNapisz 1-2 zdania komentarza do wyników. Możesz zaproponować zawężenie wyszukiwania.`,
-            }],
+            model: "claude-sonnet-4-6",
+            max_tokens: 300,
+            system: systemPrompt,
+            messages: [
+              ...messages.map((m: { role: string; content: string }) => ({
+                role: m.role as "user" | "assistant",
+                content: m.content,
+              })),
+              {
+                role: "user" as const,
+                content: `Wyniki wyszukiwania: ${doctorSummary}. Napisz krótki komentarz (1-2 zdania) po polsku. Nie generuj JSON ani list.`,
+              },
+            ],
           });
           for await (const chunk of commentStream) {
             if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {

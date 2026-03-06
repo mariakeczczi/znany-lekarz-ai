@@ -62,6 +62,9 @@ export function HealthData() {
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const charQueueRef = useRef<string[]>([]);
+  const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typingTargetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     loadFiles();
@@ -90,6 +93,39 @@ export function HealthData() {
     } catch {
       // ignore
     }
+  }
+
+  function startTypingInterval(assistantId: string) {
+    if (typingIntervalRef.current && typingTargetIdRef.current === assistantId) return;
+    if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+    typingTargetIdRef.current = assistantId;
+    typingIntervalRef.current = setInterval(() => {
+      const queue = charQueueRef.current;
+      if (queue.length === 0) return;
+      const chars = queue.splice(0, 3).join("");
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId ? { ...m, content: m.content + chars } : m
+        )
+      );
+    }, 16);
+  }
+
+  function stopTypingInterval() {
+    if (typingIntervalRef.current) {
+      clearInterval(typingIntervalRef.current);
+      typingIntervalRef.current = null;
+    }
+    const targetId = typingTargetIdRef.current;
+    if (targetId && charQueueRef.current.length > 0) {
+      const remaining = charQueueRef.current.splice(0).join("");
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === targetId ? { ...m, content: m.content + remaining } : m
+        )
+      );
+    }
+    typingTargetIdRef.current = null;
   }
 
   async function uploadFile(file: File) {
@@ -179,39 +215,56 @@ export function HealthData() {
           if (!line.startsWith("data: ")) continue;
           try {
             const event = JSON.parse(line.slice(6));
-            setMessages((prev) =>
-              prev.map((m) => {
-                if (m.id !== assistantId) return m;
-                if (event.type === "text" || event.type === "result") {
-                  return { ...m, content: event.content ?? "" };
-                }
-                if (event.type === "tool_call") {
+            if (event.type === "text" || event.type === "result") {
+              const chars = Array.from(event.content ?? "");
+              charQueueRef.current.push(...chars);
+              startTypingInterval(assistantId);
+            } else if (event.type === "tool_call") {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== assistantId) return m;
                   const newStep: StatusStep = { type: "tool_call", label: event.label ?? "Working...", done: false };
                   return { ...m, steps: [...(m.steps ?? []), newStep] };
-                }
-                if (event.type === "tool_result") {
+                })
+              );
+            } else if (event.type === "tool_result") {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== assistantId) return m;
                   const steps = [...(m.steps ?? [])];
                   const lastIdx = [...steps].reverse().findIndex((s) => s.type === "tool_call" && !s.done);
                   if (lastIdx !== -1) steps[steps.length - 1 - lastIdx] = { ...steps[steps.length - 1 - lastIdx], done: true };
                   return { ...m, steps };
-                }
-                if (event.type === "done") return { ...m, isStreaming: false };
-                if (event.type === "error") return { ...m, content: `Error: ${event.content}`, isStreaming: false };
-                return m;
-              })
-            );
+                })
+              );
+            } else if (event.type === "done") {
+              stopTypingInterval();
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, isStreaming: false } : m)
+              );
+            } else if (event.type === "error") {
+              stopTypingInterval();
+              charQueueRef.current = [];
+              setMessages((prev) =>
+                prev.map((m) => m.id === assistantId ? { ...m, content: `Error: ${event.content}`, isStreaming: false } : m)
+              );
+            }
           } catch {
             // ignore
           }
         }
       }
     } catch {
+      stopTypingInterval();
+      charQueueRef.current = [];
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantId ? { ...m, content: "Sorry, something went wrong.", isStreaming: false } : m
         )
       );
     } finally {
+      stopTypingInterval();
+      charQueueRef.current = [];
       setIsLoading(false);
     }
   }
@@ -530,12 +583,7 @@ function ChatBubble({ message }: { message: Message }) {
           }`}
         >
           {message.content ? (
-            <>
-              <MarkdownContent content={message.content} />
-              {message.isStreaming && (
-                <span className="inline-block w-1.5 h-4 bg-current ml-0.5 animate-pulse align-middle" />
-              )}
-            </>
+            <MarkdownContent content={message.content} />
           ) : (
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <Loader2 className="w-3 h-3 animate-spin" />
